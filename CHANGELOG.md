@@ -2,6 +2,10 @@
 
 All notable changes to `security-advisories-health-check` will be documented in this file.
 
+## 0.0.2 - 2022-08-03
+
+**Full Changelog**: https://github.com/spatie/security-advisories-health-check/compare/0.0.1...0.0.2
+
 ## 0.0.1 - 2022-08-03
 
 - experimental release
