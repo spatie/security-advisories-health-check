@@ -26,7 +26,7 @@ class SecurityAdvisoriesCheck extends Check
         }
 
         $packageNames = $advisories->keys()
-            ->map(fn(string $packageName) => "`{$packageName}`")
+            ->map(fn (string $packageName) => "`{$packageName}`")
             ->join("'", ' and ');
 
         return Result::make()
