@@ -33,7 +33,8 @@
         "psr-4": {
             "Spatie\\SecurityAdvisoriesHealthCheck\\": "src",
             "Spatie\\SecurityAdvisoriesHealthCheck\\Database\\Factories\\": "database/factories"
-        }
+        },
+
     },
     "autoload-dev": {
         "psr-4": {
