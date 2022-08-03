@@ -34,7 +34,7 @@ class SecurityAdvisoriesCheck extends Check
     protected function getInstalledPackages(): array
     {
         return collect(InstalledVersions::getAllRawData()[0]['versions'])
-            ->filter(fn(array $packageProperties) => isset($packageProperties['version']))
+            ->filter(fn (array $packageProperties) => isset($packageProperties['version']))
             ->mapWithKeys(function (array $packageProperties, string $package) {
                 return [$package => $packageProperties['version']];
             })
