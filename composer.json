@@ -20,7 +20,7 @@
         "spatie/packagist-api": "^2.1"
     },
     "require-dev": {
-        "nunomaduro/collision": "^5.10",
+        "nunomaduro/collision": "^6.0",
         "pestphp/pest": "^1.21.1",
         "phpstan/extension-installer": "^1.1",
         "phpstan/phpstan-deprecation-rules": "^1.0",
