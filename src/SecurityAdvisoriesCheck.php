@@ -43,7 +43,7 @@ class SecurityAdvisoriesCheck extends Check
 
     public function ignoredPackages(array $packageNames): self
     {
-        foreach($packageNames as $packageName){
+        foreach ($packageNames as $packageName) {
             $this->ignorePackage($packageName);
         }
 
@@ -57,7 +57,7 @@ class SecurityAdvisoriesCheck extends Check
     {
         return collect(InstalledVersions::getAllRawData()[0]['versions'])
             ->filter(fn (array $packageProperties) => isset($packageProperties['version']))
-            ->filter(fn(array $packageProperties, string $packageName) => ! in_array($packageName, $this->ignoredPackages))
+            ->filter(fn (array $packageProperties, string $packageName) => ! in_array($packageName, $this->ignoredPackages))
             ->mapWithKeys(function (array $packageProperties, string $packageName) {
                 return [$packageName => $packageProperties['version']];
             });
