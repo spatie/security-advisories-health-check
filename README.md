@@ -11,6 +11,8 @@
 
 This package contains a [Laravel Health](https://spatie.be/docs/laravel-health) check that can report any known security issues with the installed PHP packages in your application.
 
+The security advisories are fetched from Packages and are sources from GitHub, and other sources.
+
 ```php
 // typically, in a service provider
 
@@ -18,13 +20,13 @@ use Spatie\Health\Facades\Health;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 
 Health::checks([
-    SecurityAdvisoriesCheck::new()->failWhenLoadIsHigherInTheLast5Minutes(1.2),
+    SecurityAdvisoriesCheck::new(),
 ]);
 ```
 
 ## Documentation
 
-The documentation of this package is available [inside the docs of Laravel Health](https://spatie.be/docs/laravel-health/v1/available-checks/cpu-load).
+The documentation of this package is available [inside the docs of Laravel Health](https://spatie.be/docs/laravel-health/v1/available-checks/security-advisories).
 
 ## Support us
 

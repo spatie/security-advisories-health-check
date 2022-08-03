@@ -12,6 +12,9 @@ use Spatie\Packagist\PackagistUrlGenerator;
 
 class SecurityAdvisoriesCheck extends Check
 {
+    /** @var array<string> */
+    protected array $ignoredPackages = [];
+
     public function run(): Result
     {
         $packages = $this->getInstalledPackages();
@@ -31,6 +34,22 @@ class SecurityAdvisoriesCheck extends Check
             ->failed("Security advisories found for {$packageNames}");
     }
 
+    public function ignorePackage(string $packageName): self
+    {
+        $this->ignoredPackages[] = $packageName;
+
+        return $this;
+    }
+
+    public function ignoredPackages(array $packageNames): self
+    {
+        foreach($packageNames as $packageName){
+            $this->ignorePackage($packageName);
+        }
+
+        return $this;
+    }
+
     /**
      * @return Collection<string, string>
      */
@@ -38,13 +57,14 @@ class SecurityAdvisoriesCheck extends Check
     {
         return collect(InstalledVersions::getAllRawData()[0]['versions'])
             ->filter(fn (array $packageProperties) => isset($packageProperties['version']))
-            ->mapWithKeys(function (array $packageProperties, string $package) {
-                return [$package => $packageProperties['version']];
+            ->filter(fn(array $packageProperties, string $packageName) => ! in_array($packageName, $this->ignoredPackages))
+            ->mapWithKeys(function (array $packageProperties, string $packageName) {
+                return [$packageName => $packageProperties['version']];
             });
     }
 
     /**
-     * @return Collection<SecurityAdvisory>
+     * @return Collection<string>
      */
     protected function getAdvisories(Collection $packages): Collection
     {
