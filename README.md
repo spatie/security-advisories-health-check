@@ -6,7 +6,6 @@
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/spatie/security-advisories-health-check.svg?style=flat-square)](https://packagist.org/packages/spatie/security-advisories-health-check)
 [![GitHub Tests Action Status](https://img.shields.io/github/workflow/status/spatie/security-advisories-health-check/run-tests?label=tests)](https://github.com/spatie/security-advisories-health-check/actions?query=workflow%3Arun-tests+branch%3Amain)
 [![GitHub Code Style Action Status](https://img.shields.io/github/workflow/status/spatie/security-advisories-health-check/Check%20&%20fix%20styling?label=code%20style)](https://github.com/spatie/security-advisories-health-check/actions?query=workflow%3A"Check+%26+fix+styling"+branch%3Amain)
-[![PHPStan](https://github.com/spatie/security-advisories-health-check/actions/workflows/phpstan.yml/badge.svg)](https://github.com/spatie/security-advisories-health-check/actions/workflows/phpstan.yml)
 [![Total Downloads](https://img.shields.io/packagist/dt/spatie/security-advisories-health-check.svg?style=flat-square)](https://packagist.org/packages/spatie/security-advisories-health-check)
 
 This package contains a [Laravel Health](https://spatie.be/docs/laravel-health) check that can report any known security issues with the installed PHP packages in your application.
