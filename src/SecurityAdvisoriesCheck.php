@@ -22,7 +22,7 @@ class SecurityAdvisoriesCheck extends Check
         $advisories = $this->getAdvisories($packages);
 
         if ($advisories->isEmpty()) {
-            return Result::make('No security vulnerability advisories found');
+            return Result::make('No security vulnerability advisories found')->ok();
         }
 
         $packageNames = $advisories->keys()
