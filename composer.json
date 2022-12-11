@@ -16,7 +16,7 @@
         }
     ],
     "require": {
-        "php": "^8.1",
+        "php": "^8.0.2",
         "spatie/packagist-api": "^2.1"
     },
     "require-dev": {
