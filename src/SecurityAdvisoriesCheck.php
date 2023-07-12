@@ -4,6 +4,7 @@ namespace Spatie\SecurityAdvisoriesHealthCheck;
 
 use Composer\InstalledVersions;
 use GuzzleHttp\Client;
+use Hammerstone\Flaky\Flaky;
 use Illuminate\Support\Collection;
 use Spatie\Health\Checks\Check;
 use Spatie\Health\Checks\Result;
@@ -68,9 +69,13 @@ class SecurityAdvisoriesCheck extends Check
      */
     protected function getAdvisories(Collection $packages): Collection
     {
-        $advisories = $this
-            ->getPackagist()
-            ->getAdvisoriesAffectingVersions($packages->toArray());
+        $advisories = Flaky::make('health-check-retrieve-packagist-advisories')
+            ->allowFailuresForAnHour()
+            ->run(function() use ($packages) {
+                return $this
+                    ->getPackagist()
+                    ->getAdvisoriesAffectingVersions($packages->toArray());
+            });
 
         return collect($advisories);
     }

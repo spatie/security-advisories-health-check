@@ -17,6 +17,7 @@
     ],
     "require": {
         "php": "^8.0",
+        "hammerstone/flaky": "^0.1.5",
         "spatie/packagist-api": "^2.1"
     },
     "require-dev": {
