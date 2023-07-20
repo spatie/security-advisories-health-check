@@ -69,7 +69,7 @@ class SecurityAdvisoriesCheck extends Check
      */
     protected function getAdvisories(Collection $packages): Collection
     {
-        $advisories = Flaky::make('health-check-retrieve-packagist-advisories')
+        $result = Flaky::make('health-check-retrieve-packagist-advisories')
             ->allowFailuresForAnHour()
             ->run(function() use ($packages) {
                 return $this
@@ -77,7 +77,7 @@ class SecurityAdvisoriesCheck extends Check
                     ->getAdvisoriesAffectingVersions($packages->toArray());
             });
 
-        return collect($advisories);
+        return collect($result->value);
     }
 
     protected function getPackagist(): PackagistClient
