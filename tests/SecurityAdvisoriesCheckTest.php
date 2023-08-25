@@ -1,5 +1,6 @@
 <?php
 
+use Spatie\Health\Enums\Status;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 
 it('can get security advisories', function () {
@@ -7,11 +8,11 @@ it('can get security advisories', function () {
 
     $result = $check->run();
 
-    if ($result->ok()) {
+    if ($result->status === Status::ok()) {
         expect($result->meta)->toBeEmpty();
+
+        return;
     }
 
-    if (! $result->ok()) {
-        expect(count($result->meta))->toBeGreaterThan(0);
-    }
+    expect(count($result->meta))->toBeGreaterThan(0);
 });
