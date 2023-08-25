@@ -9,6 +9,7 @@ use Spatie\Health\Checks\Check;
 use Spatie\Health\Checks\Result;
 use Spatie\Packagist\PackagistClient;
 use Spatie\Packagist\PackagistUrlGenerator;
+use Exception;
 
 class SecurityAdvisoriesCheck extends Check
 {
@@ -68,9 +69,28 @@ class SecurityAdvisoriesCheck extends Check
      */
     protected function getAdvisories(Collection $packages): Collection
     {
-        $advisories = $this
-            ->getPackagist()
-            ->getAdvisoriesAffectingVersions($packages->toArray());
+        $maxAttempts = 5;
+        $attempts = 0;
+
+        $advisories = [];
+
+        do {
+            $attempts++;
+
+            try {
+                $advisories = $this
+                    ->getPackagist()
+                    ->getAdvisoriesAffectingVersions($packages->toArray());
+
+                break;
+            } catch (Exception $e) {
+                if ($attempts === $maxAttempts) {
+                    throw $e;
+                }
+
+                usleep(100_000);
+            }
+        } while ($attempts <= $maxAttempts);
 
         return collect($advisories);
     }
