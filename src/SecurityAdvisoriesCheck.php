@@ -21,7 +21,7 @@ class SecurityAdvisoriesCheck extends Check
 
         $advisories = retry(5, function () use ($packages) {
             return $this->getAdvisories($packages);
-        }, sleepMilliseconds: 1000);
+        }, sleepMilliseconds: 2 * 1000);
 
         if ($advisories->isEmpty()) {
             return Result::make('No security vulnerability advisories found')->ok();
