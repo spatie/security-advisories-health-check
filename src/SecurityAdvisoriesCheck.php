@@ -19,7 +19,7 @@ class SecurityAdvisoriesCheck extends Check
     {
         $packages = $this->getInstalledPackages();
 
-        $advisories = retry(5, function() use ($packages) {
+        $advisories = retry(5, function () use ($packages) {
             return $this->getAdvisories($packages);
         }, sleepMilliseconds: 1000);
 
