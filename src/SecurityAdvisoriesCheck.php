@@ -85,12 +85,12 @@ class SecurityAdvisoriesCheck extends Check
                 break;
             } catch (Exception $e) {
                 if ($attempts === $maxAttempts) {
-                    throw $e;
+                    break;
                 }
 
                 usleep(100_000);
             }
-        } while ($attempts <= $maxAttempts);
+        } while ($attempts < $maxAttempts);
 
         return collect($advisories);
     }
