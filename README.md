@@ -14,7 +14,7 @@ use Spatie\Health\Facades\Health;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 
 Health::checks([
-    SecurityAdvisoriesCheck::new(),
+    SecurityAdvisoriesCheck::new()->retryTimes(5),
 ]);
 ```
 

@@ -4,6 +4,7 @@ namespace Spatie\SecurityAdvisoriesHealthCheck;
 
 use Composer\InstalledVersions;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ServerException;
 use Illuminate\Support\Collection;
 use Spatie\Health\Checks\Check;
 use Spatie\Health\Checks\Result;
@@ -15,13 +16,43 @@ class SecurityAdvisoriesCheck extends Check
     /** @var array<string> */
     protected array $ignoredPackages = [];
 
+    protected int $retryTimes = 5;
+
+    public function retryTimes(int $times): self
+    {
+        $this->retryTimes = $times;
+
+        return $this;
+    }
+
     public function run(): Result
     {
         $packages = $this->getInstalledPackages();
 
-        $advisories = retry(5, function () use ($packages) {
-            return $this->getAdvisories($packages);
-        }, sleepMilliseconds: 2 * 1000);
+        $packagistGatewayErrorCount = 0;
+
+        try {
+            $advisories = retry(
+                times: $this->retryTimes,
+                callback: function () use ($packages) {
+                    return $this->getAdvisories($packages);
+                },
+                sleepMilliseconds: 2 * 1000,
+                when: function ($e) use (&$packagistGatewayErrorCount) {
+                    if ($e instanceof ServerException && in_array($e->getCode(), [502, 503, 504])) {
+                        $packagistGatewayErrorCount++;
+                    }
+
+                    return true;
+                }
+            );
+        } catch (ServerException $e) {
+            if ($packagistGatewayErrorCount === $this->retryTimes) {
+                return Result::make('Packagist service could not be reached')->ok();
+            }
+
+            throw $e;
+        }
 
         if ($advisories->isEmpty()) {
             return Result::make('No security vulnerability advisories found')->ok();
