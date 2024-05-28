@@ -72,7 +72,7 @@ class SecurityAdvisoriesCheck extends Check
 
         $packageNames = $advisories->keys()
             ->map(fn (string $packageName) => "`{$packageName}`")
-            ->join(", ", ' and ');
+            ->join(', ', ' and ');
 
         return Result::make()
             ->meta($advisories->toArray())
