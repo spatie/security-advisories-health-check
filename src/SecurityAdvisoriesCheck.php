@@ -18,6 +18,15 @@ class SecurityAdvisoriesCheck extends Check
 
     protected int $retryTimes = 5;
 
+    public PackagistClient $packagistClient;
+
+    public function __construct(?PackagistClient $packagistClient = null)
+    {
+        parent::__construct();
+
+        $this->packagistClient = $packagistClient ?? new PackagistClient(new Client(), new PackagistUrlGenerator());
+    }
+
     public function retryTimes(int $times): self
     {
         $this->retryTimes = $times;
@@ -30,6 +39,7 @@ class SecurityAdvisoriesCheck extends Check
         $packages = $this->getInstalledPackages();
 
         $packagistGatewayErrorCount = 0;
+        $lastNonGatewayPackagistError = null;
 
         try {
             $advisories = retry(
@@ -38,20 +48,22 @@ class SecurityAdvisoriesCheck extends Check
                     return $this->getAdvisories($packages);
                 },
                 sleepMilliseconds: 2 * 1000,
-                when: function ($e) use (&$packagistGatewayErrorCount) {
+                when: function ($e) use (&$packagistGatewayErrorCount, &$lastNonGatewayPackagistError) {
                     if ($e instanceof ServerException && in_array($e->getCode(), [502, 503, 504])) {
                         $packagistGatewayErrorCount++;
+                    } else {
+                        $lastNonGatewayPackagistError = $e;
                     }
 
                     return true;
                 }
             );
         } catch (ServerException $e) {
-            if ($packagistGatewayErrorCount === $this->retryTimes) {
+            if ($packagistGatewayErrorCount === $this->retryTimes - 1) {
                 return Result::make('Packagist service could not be reached')->ok();
             }
 
-            throw $e;
+            throw $lastNonGatewayPackagistError ?? $e;
         }
 
         if ($advisories->isEmpty()) {
@@ -102,17 +114,9 @@ class SecurityAdvisoriesCheck extends Check
     protected function getAdvisories(Collection $packages): Collection
     {
         $advisories = $this
-            ->getPackagist()
+            ->packagistClient
             ->getAdvisoriesAffectingVersions($packages->toArray());
 
         return collect($advisories);
-    }
-
-    protected function getPackagist(): PackagistClient
-    {
-        return new PackagistClient(
-            new Client(),
-            new PackagistUrlGenerator()
-        );
     }
 }
