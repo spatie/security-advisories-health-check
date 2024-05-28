@@ -26,7 +26,7 @@
         "phpstan/phpstan-deprecation-rules": "^1.0",
         "phpstan/phpstan-phpunit": "^1.0",
         "phpunit/phpunit": "^9.5.10|^10.5",
-        "spatie/laravel-health": "^1.12.2"
+        "spatie/laravel-health": "^1.22.0"
     },
     "autoload": {
         "psr-4": {
