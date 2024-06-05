@@ -29,7 +29,8 @@ class SecurityAdvisoriesCheck extends Check
     {
         parent::__construct();
 
-        $this->packagistClient = $packagistClient ?? new PackagistClient(new Client(), new PackagistUrlGenerator());
+        $this->packagistClient = $packagistClient
+            ?? new PackagistClient(new Client(), new PackagistUrlGenerator());
     }
 
     public function retryTimes(int $times): self
@@ -134,13 +135,16 @@ class SecurityAdvisoriesCheck extends Check
 
     protected function shouldRetry($exception): bool
     {
-        $isGatewayException = $exception instanceof ServerException && in_array($exception->getCode(), [502, 503, 504]);
+        $isGatewayException = $exception instanceof ServerException
+            && in_array($exception->getCode(), [502, 503, 504]);
 
         if ($isGatewayException) {
             $this->gatewayExceptionCount++;
         }
 
-        $this->lastNonGatewayException = $isGatewayException ? $this->lastNonGatewayException : $exception;
+        $this->lastNonGatewayException = $isGatewayException
+            ? $this->lastNonGatewayException
+            : $exception;
 
         return true;
     }
