@@ -43,12 +43,12 @@ it('returns ok status if 502, 503, or 504 is returned all 5 times', function () 
     expect($result->status)->toBe(Status::ok());
 });
 
-it('should throw the last encountered non-gateway error after retrying gateway errors', function () {
+it('should throw the last encountered non-gateway exception after retrying gateway and non-gateway exceptions', function () {
     $mock = new MockHandler([
         new Response(502),
-        new Response(503),
+        new Response(400),
         new Response(504),
-        new Response(400), // Non-retryable error not related to gateway issues
+        new Response(403),
         new Response(504),
     ]);
     $handlerStack = HandlerStack::create($mock);
@@ -58,4 +58,4 @@ it('should throw the last encountered non-gateway error after retrying gateway e
     $check = new SecurityAdvisoriesCheck($packagistClient);
 
     $check->run();
-})->throws(ClientException::class);
+})->throws(ClientException::class, null, 403);

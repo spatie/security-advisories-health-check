@@ -10,6 +10,7 @@ use Spatie\Health\Checks\Check;
 use Spatie\Health\Checks\Result;
 use Spatie\Packagist\PackagistClient;
 use Spatie\Packagist\PackagistUrlGenerator;
+use Throwable;
 
 class SecurityAdvisoriesCheck extends Check
 {
@@ -17,6 +18,10 @@ class SecurityAdvisoriesCheck extends Check
     protected array $ignoredPackages = [];
 
     protected int $retryTimes = 5;
+
+    protected int $gatewayExceptionCount = 0;
+
+    protected ?Throwable $lastNonGatewayException = null;
 
     public PackagistClient $packagistClient;
 
@@ -34,36 +39,21 @@ class SecurityAdvisoriesCheck extends Check
         return $this;
     }
 
+    /**
+     * @throws Throwable
+     */
     public function run(): Result
     {
         $packages = $this->getInstalledPackages();
 
-        $packagistGatewayErrorCount = 0;
-        $lastNonGatewayPackagistError = null;
-
         try {
-            $advisories = retry(
-                times: $this->retryTimes,
-                callback: function () use ($packages) {
-                    return $this->getAdvisories($packages);
-                },
-                sleepMilliseconds: 2 * 1000,
-                when: function ($e) use (&$packagistGatewayErrorCount, &$lastNonGatewayPackagistError) {
-                    if ($e instanceof ServerException && in_array($e->getCode(), [502, 503, 504])) {
-                        $packagistGatewayErrorCount++;
-                    } else {
-                        $lastNonGatewayPackagistError = $e;
-                    }
-
-                    return true;
-                }
-            );
-        } catch (ServerException $e) {
-            if ($packagistGatewayErrorCount === $this->retryTimes - 1) {
+            $advisories = $this->retryGetAdvisories($packages);
+        } catch (Throwable $exception) {
+            if ($this->allRetriesAreGatewayErrors()) {
                 return Result::make('Packagist service could not be reached')->ok();
             }
 
-            throw $lastNonGatewayPackagistError ?? $e;
+            throw $this->lastNonGatewayException ?? $exception;
         }
 
         if ($advisories->isEmpty()) {
@@ -118,5 +108,40 @@ class SecurityAdvisoriesCheck extends Check
             ->getAdvisoriesAffectingVersions($packages->toArray());
 
         return collect($advisories);
+    }
+
+    protected function allRetriesAreGatewayErrors(): bool
+    {
+        // Compare `$this->gatewayExceptionCount` with `retryTimes - 1` rather than `retryTimes`.
+        // The `shouldRetry` callback is not executed on the final retry, so the last exception
+        // in the retry loop does not increment `$this->gatewayExceptionCount`.
+
+        return $this->gatewayExceptionCount === $this->retryTimes - 1;
+    }
+
+    /**
+     * @throws Throwable
+     */
+    protected function retryGetAdvisories(Collection $packages): Collection
+    {
+        return retry(
+            times: $this->retryTimes,
+            callback: fn () => $this->getAdvisories($packages),
+            sleepMilliseconds: 2 * 1000,
+            when: fn ($exception) => $this->shouldRetry($exception)
+        );
+    }
+
+    protected function shouldRetry($exception): bool
+    {
+        $isGatewayException = $exception instanceof ServerException && in_array($exception->getCode(), [502, 503, 504]);
+
+        if ($isGatewayException) {
+            $this->gatewayExceptionCount++;
+        }
+
+        $this->lastNonGatewayException = $isGatewayException ? $this->lastNonGatewayException : $exception;
+
+        return true;
     }
 }
