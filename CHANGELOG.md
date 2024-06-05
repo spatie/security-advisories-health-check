@@ -2,6 +2,18 @@
 
 All notable changes to `security-advisories-health-check` will be documented in this file.
 
+## 1.2.1 - 2024-06-05
+
+### What's Changed
+
+* Ignore Packagist connection errors by @emaadali in https://github.com/spatie/security-advisories-health-check/pull/21
+
+### New Contributors
+
+* @emaadali made their first contribution in https://github.com/spatie/security-advisories-health-check/pull/21
+
+**Full Changelog**: https://github.com/spatie/security-advisories-health-check/compare/1.2.0...1.2.1
+
 ## 1.2.0 - 2024-03-18
 
 ### What's Changed
