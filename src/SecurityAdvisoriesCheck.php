@@ -27,7 +27,7 @@ class SecurityAdvisoriesCheck extends Check
 
     public PackagistClient $packagistClient;
 
-    protected int $cacheExpiryInMinutes = 60;
+    protected int $cacheExpiryInMinutes = 0;
 
     protected ?CacheInterface $cache = null;
 
@@ -62,7 +62,7 @@ class SecurityAdvisoriesCheck extends Check
         $this->cacheExpiryInMinutes = $minutes;
 
         // If no cache was provided, set up the default cache when caching is explicitly requested
-        if ($this->cache === null) {
+        if ($this->cache === null && $minutes > 0) {
             $this->cache = $this->getDefaultCache();
         }
 

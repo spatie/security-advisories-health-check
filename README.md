@@ -29,7 +29,7 @@ use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 Health::checks([
     SecurityAdvisoriesCheck::new()
         ->retryTimes(5)
-        ->cacheExpiryInMinutes(60), // Enables caching for 1 hour
+        ->cacheExpiryInMinutes(60),     // Enables caching for 1 hour
 ]);
 ```
 
@@ -45,27 +45,26 @@ use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 Health::checks([
     SecurityAdvisoriesCheck::new(
         packagistClient: null,
-        cache: Cache::store('redis') // Use Redis cache store
-    )->cacheExpiryInMinutes(120), // Cache for 2 hours
+        cache: Cache::store('redis')    // Use Redis cache store
+    )->cacheExpiryInMinutes(120),       // Cache for 2 hours
 ]);
 ```
 
 ### Cache Behavior
 
 - **Cache Key**: Automatically generated based on your installed packages and their versions
-- **Cache Duration**: Configurable via `cacheExpiryInMinutes()` method (default: 60 minutes)
+- **Cache Duration**: Configurable via `cacheExpiryInMinutes()` method (default: 0, no caching)
 - **Cache Store**: Uses Laravel's default cache driver, or you can specify a custom cache instance
-- **Cache Invalidation**: Cache automatically expires after the configured duration
-- **Package Changes**: Different package lists generate different cache keys, ensuring accuracy
+- **Package Changes**: Different package lists generate different cache keys, refreshing the cache
 
 ### Configuration Options
 
 ```php
 SecurityAdvisoriesCheck::new()
-    ->retryTimes(3)                    // Number of retry attempts on failure
-    ->cacheExpiryInMinutes(120)        // Cache duration in minutes
-    ->ignorePackage('vendor/package')  // Ignore specific packages
-    ->ignoredPackages([               // Ignore multiple packages
+    ->retryTimes(3)                     // Number of retry attempts on failure
+    ->cacheExpiryInMinutes(120)         // Cache duration in minutes
+    ->ignorePackage('vendor/package')   // Ignore specific packages
+    ->ignoredPackages([                 // Ignore multiple packages
         'vendor/package1',
         'vendor/package2'
     ]);
