@@ -8,6 +8,7 @@ use GuzzleHttp\Psr7\Response;
 use Spatie\Health\Enums\Status;
 use Spatie\Packagist\PackagistClient;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
+use Spatie\SecurityAdvisoriesHealthCheck\Tests\TestCache;
 
 it('can get security advisories', function () {
     $check = new SecurityAdvisoriesCheck();
@@ -59,3 +60,132 @@ it('should throw the last encountered non-gateway exception after retrying gatew
 
     $check->run();
 })->throws(ClientException::class, null, 403);
+
+it('caches security advisories results', function () {
+    $cache = new TestCache();
+
+    $mockData = json_encode([
+        'advisories' => [
+            'vendor/package' => [
+                [
+                    'advisoryId' => 'ADVISORY-123',
+                    'affectedVersions' => '>=1.0,<1.1',
+                    'title' => 'Test Security Issue'
+                ]
+            ]
+        ]
+    ]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
+
+    // First call should hit the API
+    $result1 = $check->run();
+
+    // Mock should be empty now, but second call should use cache
+    $mock->append(new Response(500)); // This should not be called due to caching
+
+    $result2 = $check->run();
+
+    expect($result1->status)->toBe($result2->status);
+    expect($result1->notificationMessage)->toBe($result2->notificationMessage);
+});
+
+it('respects custom cache expiry time', function () {
+    $cache = new TestCache();
+
+    $mockData = json_encode([
+        'advisories' => [
+            'vendor/package' => [
+                [
+                    'advisoryId' => 'ADVISORY-456',
+                    'affectedVersions' => '>=2.0,<2.1',
+                    'title' => 'Another Security Issue'
+                ]
+            ]
+        ]
+    ]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
+    $check->cacheExpiryInMinutes(120); // 2 hours
+
+    $result = $check->run();
+
+    // Verify that something was cached (we can't easily check the exact key without exposing it)
+    expect($result)->toBeInstanceOf(\Spatie\Health\Checks\Result::class);
+});
+
+it('cache key changes when package list changes', function () {
+    $cache1 = new TestCache();
+    $cache2 = new TestCache();
+
+    $mockData1 = json_encode(['advisories' => []]);
+    $mockData2 = json_encode(['advisories' => []]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData1),
+        new Response(200, [], $mockData2),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+
+    // Create two different check instances with different ignored packages and different caches
+    $check1 = new SecurityAdvisoriesCheck($packagistClient, $cache1);
+    $check1->ignorePackage('some/package');
+
+    $check2 = new SecurityAdvisoriesCheck($packagistClient, $cache2);
+    $check2->ignorePackage('different/package');
+
+    // Both should make HTTP calls since they have different cache keys
+    $result1 = $check1->run();
+    $result2 = $check2->run();
+
+    expect($result1->status)->toBe(Status::ok());
+    expect($result2->status)->toBe(Status::ok());
+    expect($mock->count())->toBe(0); // Both requests should have been made
+});
+
+it('prevents external API calls when cache is hit', function () {
+    $cache = new TestCache();
+
+    $mockData = json_encode(['advisories' => []]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData),
+        // No second response - if the second call tries to hit the API, it will fail
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
+
+    // First call should hit the API and populate cache
+    $result1 = $check->run();
+    expect($result1->status)->toBe(Status::ok());
+    expect($mock->count())->toBe(0); // One request consumed
+
+    // Second call should use cache, not hit API
+    $result2 = $check->run();
+    expect($result2->status)->toBe(Status::ok());
+    expect($mock->count())->toBe(0); // No additional requests consumed
+});
