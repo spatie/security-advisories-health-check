@@ -133,21 +133,20 @@ class SecurityAdvisoriesCheck extends Check
      */
     protected function getAdvisories(Collection $packages): Collection
     {
-        if ($this->cache === null) {
+        if ($this->cache === null || $this->cacheExpiryInMinutes === 0) {
             return $this->fetchAdvisoriesFromApi($packages);
         }
 
         $cacheKey = $this->getCacheKey($packages);
 
-        $cached = $this->cache->get($cacheKey);
-        if ($cached !== null) {
-            return collect($cached);
+        if ($cached = $this->cache->get($cacheKey)) {
+            return $cached;
         }
 
-        $advisories = $this->fetchAdvisoriesFromApi($packages);
-        $this->cache->set($cacheKey, $advisories->toArray(), $this->cacheExpiryInMinutes * 60);
+        $result = $this->fetchAdvisoriesFromApi($packages);
+        $this->cache->set($cacheKey, $result, $this->cacheExpiryInMinutes * 60);
 
-        return $advisories;
+        return $result;
     }
 
     protected function fetchAdvisoriesFromApi(Collection $packages): Collection

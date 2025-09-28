@@ -85,13 +85,13 @@ it('caches security advisories results', function () {
 
     $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
+    $check->cacheExpiryInMinutes(60); // Enable caching
 
     // First call should hit the API
     $result1 = $check->run();
+    expect($mock->count())->toBe(0); // Mock should be consumed
 
-    // Mock should be empty now, but second call should use cache
-    $mock->append(new Response(500)); // This should not be called due to caching
-
+    // Second call should use cache and not hit API
     $result2 = $check->run();
 
     expect($result1->status)->toBe($result2->status);
@@ -178,6 +178,7 @@ it('prevents external API calls when cache is hit', function () {
 
     $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
+    $check->cacheExpiryInMinutes(60); // Enable caching
 
     // First call should hit the API and populate cache
     $result1 = $check->run();
