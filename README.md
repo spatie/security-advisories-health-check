@@ -18,6 +18,51 @@ Health::checks([
 ]);
 ```
 
+## Caching
+
+By default, this package will make an HTTP request to Packagist every time the health check runs. To reduce API calls and improve performance, you can enable caching by calling `cacheResultsForMinutes()`:
+
+```php
+use Spatie\Health\Facades\Health;
+use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
+
+Health::checks([
+    SecurityAdvisoriesCheck::new()
+        ->retryTimes(5)
+        ->cacheResultsForMinutes(60),     // Enables caching for 1 hour
+]);
+```
+
+### Using Custom Cache
+
+You can also provide your own PSR-16 compatible cache instance:
+
+```php
+use Illuminate\Support\Facades\Cache;
+use Spatie\Health\Facades\Health;
+use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
+
+Health::checks([
+    SecurityAdvisoriesCheck::new(
+        packagistClient: null,
+        cache: Cache::store('redis')    // Use Redis cache store
+    )->cacheResultsForMinutes(120),     // Cache for 2 hours
+]);
+```
+
+### Configuration Options
+
+```php
+SecurityAdvisoriesCheck::new()
+    ->retryTimes(3)                     // Number of retry attempts on failure
+    ->cacheResultsForMinutes(120)       // Cache duration in minutes
+    ->ignorePackage('vendor/package')   // Ignore specific packages
+    ->ignoredPackages([                 // Ignore multiple packages
+        'vendor/package1',
+        'vendor/package2'
+    ]);
+```
+
 ## Documentation
 
 The documentation of this package is available [inside the docs of Laravel Health](https://spatie.be/docs/laravel-health/v1/available-checks/security-advisories).
