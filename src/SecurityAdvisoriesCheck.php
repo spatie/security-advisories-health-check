@@ -27,7 +27,7 @@ class SecurityAdvisoriesCheck extends Check
 
     public PackagistClient $packagistClient;
 
-    protected int $cacheExpiryInMinutes = 0;
+    protected int $cacheResultsForMinutes = 0;
 
     protected ?CacheInterface $cache = null;
 
@@ -57,11 +57,10 @@ class SecurityAdvisoriesCheck extends Check
         return $this;
     }
 
-    public function cacheExpiryInMinutes(int $minutes): self
+    public function cacheResultsForMinutes(int $minutes): self
     {
-        $this->cacheExpiryInMinutes = $minutes;
+        $this->cacheResultsForMinutes = $minutes;
 
-        // If no cache was provided, set up the default cache when caching is explicitly requested
         if ($this->cache === null && $minutes > 0) {
             $this->cache = $this->getDefaultCache();
         }
@@ -133,7 +132,7 @@ class SecurityAdvisoriesCheck extends Check
      */
     protected function getAdvisories(Collection $packages): Collection
     {
-        if ($this->cache === null || $this->cacheExpiryInMinutes === 0) {
+        if ($this->cache === null || $this->cacheResultsForMinutes === 0) {
             return $this->fetchAdvisoriesFromApi($packages);
         }
 
@@ -144,7 +143,7 @@ class SecurityAdvisoriesCheck extends Check
         }
 
         $result = $this->fetchAdvisoriesFromApi($packages);
-        $this->cache->set($cacheKey, $result, $this->cacheExpiryInMinutes * 60);
+        $this->cache->set($cacheKey, $result, $this->cacheResultsForMinutes * 60);
 
         return $result;
     }

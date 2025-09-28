@@ -20,7 +20,7 @@ Health::checks([
 
 ## Caching
 
-By default, this package will make an HTTP request to Packagist every time the health check runs. To reduce API calls and improve performance, you can enable caching by calling `cacheExpiryInMinutes()`:
+By default, this package will make an HTTP request to Packagist every time the health check runs. To reduce API calls and improve performance, you can enable caching by calling `cacheResultsForMinutes()`:
 
 ```php
 use Spatie\Health\Facades\Health;
@@ -29,7 +29,7 @@ use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 Health::checks([
     SecurityAdvisoriesCheck::new()
         ->retryTimes(5)
-        ->cacheExpiryInMinutes(60),     // Enables caching for 1 hour
+        ->cacheResultsForMinutes(60),     // Enables caching for 1 hour
 ]);
 ```
 
@@ -46,23 +46,16 @@ Health::checks([
     SecurityAdvisoriesCheck::new(
         packagistClient: null,
         cache: Cache::store('redis')    // Use Redis cache store
-    )->cacheExpiryInMinutes(120),       // Cache for 2 hours
+    )->cacheResultsForMinutes(120),     // Cache for 2 hours
 ]);
 ```
-
-### Cache Behavior
-
-- **Cache Key**: Automatically generated based on your installed packages and their versions
-- **Cache Duration**: Configurable via `cacheExpiryInMinutes()` method (default: 0, no caching)
-- **Cache Store**: Uses Laravel's default cache driver, or you can specify a custom cache instance
-- **Package Changes**: Different package lists generate different cache keys, refreshing the cache
 
 ### Configuration Options
 
 ```php
 SecurityAdvisoriesCheck::new()
     ->retryTimes(3)                     // Number of retry attempts on failure
-    ->cacheExpiryInMinutes(120)         // Cache duration in minutes
+    ->cacheResultsForMinutes(120)       // Cache duration in minutes
     ->ignorePackage('vendor/package')   // Ignore specific packages
     ->ignoredPackages([                 // Ignore multiple packages
         'vendor/package1',

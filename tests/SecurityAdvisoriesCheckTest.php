@@ -85,7 +85,7 @@ it('caches security advisories results', function () {
 
     $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
-    $check->cacheExpiryInMinutes(60); // Enable caching
+    $check->cacheResultsForMinutes(60); // Enable caching
 
     // First call should hit the API
     $result1 = $check->run();
@@ -122,7 +122,7 @@ it('respects custom cache expiry time', function () {
 
     $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
-    $check->cacheExpiryInMinutes(120); // 2 hours
+    $check->cacheResultsForMinutes(120); // 2 hours
 
     $result = $check->run();
 
@@ -178,7 +178,7 @@ it('prevents external API calls when cache is hit', function () {
 
     $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
-    $check->cacheExpiryInMinutes(60); // Enable caching
+    $check->cacheResultsForMinutes(60); // Enable caching
 
     // First call should hit the API and populate cache
     $result1 = $check->run();
