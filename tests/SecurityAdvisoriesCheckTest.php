@@ -70,10 +70,10 @@ it('caches security advisories results', function () {
                 [
                     'advisoryId' => 'ADVISORY-123',
                     'affectedVersions' => '>=1.0,<1.1',
-                    'title' => 'Test Security Issue'
-                ]
-            ]
-        ]
+                    'title' => 'Test Security Issue',
+                ],
+            ],
+        ],
     ]);
 
     $mock = new MockHandler([
@@ -107,10 +107,10 @@ it('respects custom cache expiry time', function () {
                 [
                     'advisoryId' => 'ADVISORY-456',
                     'affectedVersions' => '>=2.0,<2.1',
-                    'title' => 'Another Security Issue'
-                ]
-            ]
-        ]
+                    'title' => 'Another Security Issue',
+                ],
+            ],
+        ],
     ]);
 
     $mock = new MockHandler([
