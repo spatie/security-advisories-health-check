@@ -6,6 +6,8 @@ use Composer\InstalledVersions;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ServerException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Psr\SimpleCache\CacheInterface;
 use Spatie\Health\Checks\Check;
 use Spatie\Health\Checks\Result;
 use Spatie\Packagist\PackagistClient;
@@ -25,17 +27,44 @@ class SecurityAdvisoriesCheck extends Check
 
     public PackagistClient $packagistClient;
 
-    public function __construct(?PackagistClient $packagistClient = null)
+    protected int $cacheExpiryInMinutes = 0;
+
+    protected ?CacheInterface $cache = null;
+
+    public function __construct(?PackagistClient $packagistClient = null, ?CacheInterface $cache = null)
     {
         parent::__construct();
 
         $this->packagistClient = $packagistClient
             ?? new PackagistClient(new Client(), new PackagistUrlGenerator());
+
+        $this->cache = $cache;
+    }
+
+    protected function getDefaultCache(): ?CacheInterface
+    {
+        if (function_exists('app') && app()->bound('cache')) {
+            return Cache::store();
+        }
+
+        return null;
     }
 
     public function retryTimes(int $times): self
     {
         $this->retryTimes = $times;
+
+        return $this;
+    }
+
+    public function cacheExpiryInMinutes(int $minutes): self
+    {
+        $this->cacheExpiryInMinutes = $minutes;
+
+        // If no cache was provided, set up the default cache when caching is explicitly requested
+        if ($this->cache === null && $minutes > 0) {
+            $this->cache = $this->getDefaultCache();
+        }
 
         return $this;
     }
@@ -104,11 +133,40 @@ class SecurityAdvisoriesCheck extends Check
      */
     protected function getAdvisories(Collection $packages): Collection
     {
+        if ($this->cache === null) {
+            return $this->fetchAdvisoriesFromApi($packages);
+        }
+
+        $cacheKey = $this->getCacheKey($packages);
+
+        $cached = $this->cache->get($cacheKey);
+        if ($cached !== null) {
+            return collect($cached);
+        }
+
+        $advisories = $this->fetchAdvisoriesFromApi($packages);
+        $this->cache->set($cacheKey, $advisories->toArray(), $this->cacheExpiryInMinutes * 60);
+
+        return $advisories;
+    }
+
+    protected function fetchAdvisoriesFromApi(Collection $packages): Collection
+    {
         $advisories = $this
             ->packagistClient
             ->getAdvisoriesAffectingVersions($packages->toArray());
 
         return collect($advisories);
+    }
+
+    protected function getCacheKey(Collection $packages): string
+    {
+        return 'security-advisories:' . md5(
+            $packages
+                ->sortKeys()
+                ->map(fn ($version, $name) => "{$name}:{$version}")
+                ->implode('|')
+        );
     }
 
     protected function allRetriesAreGatewayErrors(): bool
