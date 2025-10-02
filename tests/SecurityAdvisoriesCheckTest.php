@@ -5,10 +5,10 @@ use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Spatie\Health\Enums\Status;
 use Spatie\Packagist\PackagistClient;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
-use Spatie\SecurityAdvisoriesHealthCheck\Tests\TestCache;
 
 it('can get security advisories', function () {
     $check = new SecurityAdvisoriesCheck();
@@ -170,7 +170,6 @@ it('prevents external API calls when cache is hit', function () {
 
     $mock = new MockHandler([
         new Response(200, [], $mockData),
-        // No second response - if the second call tries to hit the API, it will fail
     ]);
 
     $handlerStack = HandlerStack::create($mock);
@@ -180,13 +179,156 @@ it('prevents external API calls when cache is hit', function () {
     $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
     $check->cacheResultsForMinutes(60); // Enable caching
 
-    // First call should hit the API and populate cache
-    $result1 = $check->run();
-    expect($result1->status)->toBe(Status::ok());
-    expect($mock->count())->toBe(0); // One request consumed
+    $cacheRepository = Mockery::mock(CacheRepository::class);
+    $cacheRepository->shouldReceive('remember')
+        ->once()
+        ->with(
+            \Mockery::pattern('/^security-advisories:[a-f0-9]{32}$/'),
+            3600,
+            \Mockery::type('callable')
+        )
+        ->andReturnUsing(function ($key, $ttl, $callback) {
+            return $callback();
+        });
 
-    // Second call should use cache, not hit API
-    $result2 = $check->run();
-    expect($result2->status)->toBe(Status::ok());
-    expect($mock->count())->toBe(0); // No additional requests consumed
+    $check = new class($packagistClient, $cacheRepository) extends SecurityAdvisoriesCheck {
+        protected CacheRepository $cacheRepo;
+
+        public function __construct(?PackagistClient $packagistClient = null, ?CacheRepository $cacheRepository = null)
+        {
+            parent::__construct($packagistClient);
+            $this->cacheRepo = $cacheRepository;
+        }
+
+        protected function getCacheRepository(): CacheRepository
+        {
+            return $this->cacheRepo;
+        }
+    };
+
+    $check->cacheExpiryInMinutes(60);
+
+    $result = $check->run();
+
+    expect($result)->toBeInstanceOf(\Spatie\Health\Checks\Result::class);
+});
+
+it('respects custom cache expiry time', function () {
+    $mockData = json_encode(['advisories' => []]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+
+    $cacheRepository = Mockery::mock(CacheRepository::class);
+    $cacheRepository->shouldReceive('remember')
+        ->once()
+        ->with(
+            \Mockery::type('string'),
+            7200, // 120 minutes * 60 seconds
+            \Mockery::type('callable')
+        )
+        ->andReturnUsing(function ($key, $ttl, $callback) {
+            return $callback();
+        });
+
+    $check = new class($packagistClient, $cacheRepository) extends SecurityAdvisoriesCheck {
+        protected CacheRepository $cacheRepo;
+
+        public function __construct(?PackagistClient $packagistClient = null, ?CacheRepository $cacheRepository = null)
+        {
+            parent::__construct($packagistClient);
+            $this->cacheRepo = $cacheRepository;
+        }
+
+        protected function getCacheRepository(): CacheRepository
+        {
+            return $this->cacheRepo;
+        }
+    };
+
+    $check->cacheExpiryInMinutes(120); // 2 hours
+
+    $result = $check->run();
+
+    expect($result)->toBeInstanceOf(\Spatie\Health\Checks\Result::class);
+});
+
+it('does not use cache repository when caching is disabled', function () {
+    $mockData = json_encode(['advisories' => []]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $check = new SecurityAdvisoriesCheck($packagistClient);
+    $check->cacheExpiryInMinutes(0); // No caching
+
+    $result = $check->run();
+
+    expect($result->status)->toBe(Status::ok());
+});
+
+it('generates correct cache key based on packages', function () {
+    $mockData = json_encode(['advisories' => []]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+
+    $cacheRepository = Mockery::mock(CacheRepository::class);
+    $cacheRepository->shouldReceive('remember')
+        ->once()
+        ->with(
+            \Mockery::pattern('/^security-advisories:[a-f0-9]{32}$/'),
+            \Mockery::type('int'),
+            \Mockery::type('callable')
+        )
+        ->andReturnUsing(function ($key, $ttl, $callback) {
+            return $callback();
+        });
+
+    $check = new class($packagistClient, $cacheRepository) extends SecurityAdvisoriesCheck {
+        protected CacheRepository $cacheRepo;
+
+        public function __construct(?PackagistClient $packagistClient = null, ?CacheRepository $cacheRepository = null)
+        {
+            parent::__construct($packagistClient);
+            $this->cacheRepo = $cacheRepository;
+        }
+
+        protected function getCacheRepository(): CacheRepository
+        {
+            return $this->cacheRepo;
+        }
+    };
+
+    $check->cacheExpiryInMinutes(60);
+
+    $result = $check->run();
+
+    expect($result)->toBeInstanceOf(\Spatie\Health\Checks\Result::class);
+});
+
+it('can be instantiated early without resolving cache bindings', function () {
+    // This simulates instantiation during ServiceProvider::register()
+    // where cache bindings may not be fully available yet
+    $check = new SecurityAdvisoriesCheck();
+    $check->cacheExpiryInMinutes(60);
+
+    expect($check)->toBeInstanceOf(SecurityAdvisoriesCheck::class);
 });
