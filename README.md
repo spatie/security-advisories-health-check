@@ -43,8 +43,8 @@ The package uses Laravel's default cache driver. Cache resolution happens lazily
 
 ```php
 SecurityAdvisoriesCheck::new()
-    ->retryTimes(3)                     // Number of retry attempts on failure (default: 5)
-    ->cacheResultsForMinutes(120)       // Cache duration in minutes (default: 0, disabled)
+    ->retryTimes(3)                     // Number of retry attempts on failure
+    ->cacheResultsForMinutes(120)       // Cache duration in minutes
     ->ignorePackage('vendor/package')   // Ignore specific packages
     ->ignoredPackages([                 // Ignore multiple packages
         'vendor/package1',
