@@ -36,7 +36,6 @@ class SecurityAdvisoriesCheck extends Check
             ?? new PackagistClient(new Client(), new PackagistUrlGenerator());
     }
 
-
     public function retryTimes(int $times): self
     {
         $this->retryTimes = $times;
@@ -127,7 +126,7 @@ class SecurityAdvisoriesCheck extends Check
         return $cache->remember(
             $cacheKey,
             $this->cacheResultsForMinutes * 60,
-            fn() => $this->fetchAdvisoriesFromApi($packages)
+            fn () => $this->fetchAdvisoriesFromApi($packages)
         );
     }
 

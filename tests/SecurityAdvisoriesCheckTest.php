@@ -130,6 +130,7 @@ it('cache is called multiple times when cache stores result', function () {
             if ($cachedValue === null) {
                 $cachedValue = $callback(); // First call: execute callback
             }
+
             return $cachedValue; // Return cached value
         });
 
