@@ -1,5 +1,3 @@
 <?php
 
-use Spatie\SecurityAdvisoriesHealthCheck\Tests\TestCase;
-
-uses(TestCase::class)->in(__DIR__);
+// Pest configuration for security advisories health check tests

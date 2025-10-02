@@ -5,8 +5,10 @@ use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
+use Spatie\Health\Checks\Result;
 use Spatie\Health\Enums\Status;
 use Spatie\Packagist\PackagistClient;
+use Spatie\Packagist\PackagistUrlGenerator;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 use Spatie\SecurityAdvisoriesHealthCheck\Tests\TestCache;
 
@@ -36,7 +38,7 @@ it('returns ok status if 502, 503, or 504 is returned all 5 times', function () 
     $handlerStack = HandlerStack::create($mock);
     $client = new Client(['handler' => $handlerStack]);
 
-    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient);
 
     $result = $check->run();
@@ -55,7 +57,7 @@ it('should throw the last encountered non-gateway exception after retrying gatew
     $handlerStack = HandlerStack::create($mock);
     $client = new Client(['handler' => $handlerStack]);
 
-    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient);
 
     $check->run();
@@ -83,7 +85,7 @@ it('caches security advisories results', function () {
     $handlerStack = HandlerStack::create($mock);
     $client = new Client(['handler' => $handlerStack]);
 
-    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
     $check->cacheResultsForMinutes(60); // Enable caching
 
@@ -109,13 +111,13 @@ it('respects custom cache expiry time', function () {
     $handlerStack = HandlerStack::create($mock);
     $client = new Client(['handler' => $handlerStack]);
 
-    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
     $check->cacheResultsForMinutes(120); // 2 hours
 
     $result = $check->run();
 
-    expect($result)->toBeInstanceOf(\Spatie\Health\Checks\Result::class);
+    expect($result)->toBeInstanceOf(Result::class);
 });
 
 it('does not use cache when caching is disabled', function () {
@@ -128,7 +130,7 @@ it('does not use cache when caching is disabled', function () {
     $handlerStack = HandlerStack::create($mock);
     $client = new Client(['handler' => $handlerStack]);
 
-    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient);
     $check->cacheResultsForMinutes(0); // No caching
 
@@ -148,7 +150,7 @@ it('uses cache when enabled', function () {
     $handlerStack = HandlerStack::create($mock);
     $client = new Client(['handler' => $handlerStack]);
 
-    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
     $check->cacheResultsForMinutes(60);
 
@@ -159,8 +161,8 @@ it('uses cache when enabled', function () {
     // Second call should use cache and not hit API
     $result2 = $check->run();
 
-    expect($result1)->toBeInstanceOf(\Spatie\Health\Checks\Result::class);
-    expect($result2)->toBeInstanceOf(\Spatie\Health\Checks\Result::class);
+    expect($result1)->toBeInstanceOf(Result::class);
+    expect($result2)->toBeInstanceOf(Result::class);
     expect($result1->status)->toBe($result2->status);
 });
 
@@ -185,7 +187,7 @@ it('works when instantiated in register() without caching enabled', function () 
     $handlerStack = HandlerStack::create($mock);
     $client = new Client(['handler' => $handlerStack]);
 
-    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient);
     // Note: No caching enabled (cacheResultsForMinutes not called)
 
@@ -208,7 +210,7 @@ it('works when instantiated in register() with PSR-16 cache', function () {
     $handlerStack = HandlerStack::create($mock);
     $client = new Client(['handler' => $handlerStack]);
 
-    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
     $check->cacheResultsForMinutes(60);
 
@@ -240,7 +242,7 @@ it('works when instantiated in boot() without caching', function () {
     $handlerStack = HandlerStack::create($mock);
     $client = new Client(['handler' => $handlerStack]);
 
-    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
     $check = new SecurityAdvisoriesCheck($packagistClient);
 
     $result = $check->run();

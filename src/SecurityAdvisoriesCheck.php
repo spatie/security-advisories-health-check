@@ -6,6 +6,7 @@ use Composer\InstalledVersions;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ServerException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\App;
 use Psr\SimpleCache\CacheInterface;
 use Spatie\Health\Checks\Check;
 use Spatie\Health\Checks\Result;
@@ -139,7 +140,7 @@ class SecurityAdvisoriesCheck extends Check
         }
 
         // Fall back to Laravel's cache (resolved at runtime to avoid issues during register())
-        $cache = \Illuminate\Support\Facades\App::make('cache.store');
+        $cache = App::make('cache.store');
 
         return $cache->remember(
             $cacheKey,
