@@ -142,13 +142,13 @@ it('cache is called multiple times when cache stores result', function () {
     $check = new SecurityAdvisoriesCheck($packagistClient);
     $check->cacheResultsForMinutes(60);
 
-    // First call
+    // First call should hit the API
     $result1 = $check->run();
-    expect($mock->count())->toBe(0); // API called once
+    expect($mock->count())->toBe(0); // Mock should be consumed
 
-    // Second call - should use cached value
+    // Second call should use cache and not hit API
     $result2 = $check->run();
-    expect($mock->count())->toBe(0); // API NOT called again (still 0 remaining)
+    expect($mock->count())->toBe(0);
 
     expect($result1->status)->toBe($result2->status);
 });
