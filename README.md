@@ -39,14 +39,6 @@ Health::checks([
 
 The package uses Laravel's default cache driver. Cache resolution happens lazily when the health check runs, ensuring compatibility with both `register()` and `boot()` methods.
 
-### Cache Behavior
-
-- **Cache Duration**: Configurable via `cacheResultsForMinutes()` (default: 0, no caching)
-- **Cache Key**: Automatically generated based on your installed packages and their versions
-- **Cache Store**: Uses Laravel's default cache driver
-- **Package Changes**: Different package versions generate different cache keys, ensuring fresh checks
-- **Lazy Resolution**: Cache is only resolved when the health check runs, not during instantiation
-
 ### Configuration Options
 
 ```php
