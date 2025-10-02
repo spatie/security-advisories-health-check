@@ -9,7 +9,7 @@ The security advisories are fetched from Packagist and are sourced from GitHub a
 
 ## Usage
 
-You can register this check in either your `ServiceProvider::register()` or `ServiceProvider::boot()` method:
+You can register this check, typically this happens in a service provider:
 
 ```php
 use Spatie\Health\Facades\Health;
@@ -35,7 +35,7 @@ Health::checks([
 ]);
 ```
 
-The package uses Laravel's default cache driver. Cache resolution happens lazily when the health check runs, ensuring compatibility with both `register()` and `boot()` methods.
+The package uses Laravel's default cache driver.
 
 ### Configuration Options
 
