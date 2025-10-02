@@ -21,8 +21,6 @@ Health::checks([
 ]);
 ```
 
-Both methods work identically - the package is designed to work correctly regardless of when you register the check.
-
 ## Caching
 
 By default, this package will make an HTTP request to Packagist every time the health check runs. To reduce API calls and improve performance, you can enable caching by calling `cacheResultsForMinutes()`:
@@ -39,7 +37,7 @@ Health::checks([
 ]);
 ```
 
-When no custom cache is provided, the package will use Laravel's default cache driver. The cache is resolved lazily when the health check runs, so this works correctly whether you register the check in `register()` or `boot()`.
+When no custom cache is provided, the package will use Laravel's default cache driver.
 
 ### Using Custom Cache (PSR-16)
 
