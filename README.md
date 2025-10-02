@@ -15,7 +15,6 @@ You can register this check in either your `ServiceProvider::register()` or `Ser
 use Spatie\Health\Facades\Health;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 
-// In register() or boot()
 Health::checks([
     SecurityAdvisoriesCheck::new()->retryTimes(5),
 ]);
@@ -29,7 +28,6 @@ By default, this package will make an HTTP request to Packagist every time the h
 use Spatie\Health\Facades\Health;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 
-// Works in both register() and boot()
 Health::checks([
     SecurityAdvisoriesCheck::new()
         ->retryTimes(5)
