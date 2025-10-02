@@ -5,18 +5,23 @@
 
 This package contains a [Laravel Health](https://spatie.be/docs/laravel-health) check that can report any known security issues with the installed PHP packages in your application.
 
-The security advisories are fetched from Packages and are sources from GitHub, and other sources.
+The security advisories are fetched from Packagist and are sourced from GitHub and other sources.
+
+## Usage
+
+You can register this check in either your `ServiceProvider::register()` or `ServiceProvider::boot()` method:
 
 ```php
-// typically, in a service provider
-
 use Spatie\Health\Facades\Health;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 
+// In register() or boot()
 Health::checks([
     SecurityAdvisoriesCheck::new()->retryTimes(5),
 ]);
 ```
+
+Both methods work identically - the package is designed to work correctly regardless of when you register the check.
 
 ## Caching
 
@@ -26,6 +31,7 @@ By default, this package will make an HTTP request to Packagist every time the h
 use Spatie\Health\Facades\Health;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 
+// Works in both register() and boot()
 Health::checks([
     SecurityAdvisoriesCheck::new()
         ->retryTimes(5)
@@ -33,9 +39,11 @@ Health::checks([
 ]);
 ```
 
-### Using Custom Cache
+When no custom cache is provided, the package will use Laravel's default cache driver. The cache is resolved lazily when the health check runs, so this works correctly whether you register the check in `register()` or `boot()`.
 
-You can also provide your own PSR-16 compatible cache instance:
+### Using Custom Cache (PSR-16)
+
+For more control, you can provide your own PSR-16 compatible cache instance. This is recommended if you want to use a specific cache store or need to instantiate the check in `register()` with full control over caching:
 
 ```php
 use Spatie\Health\Facades\Health;
@@ -43,6 +51,7 @@ use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 
 $cache = new YourPsr16CacheImplementation();
 
+// Recommended for register() usage with custom cache
 Health::checks([
     new SecurityAdvisoriesCheck(
         packagistClient: null,
@@ -51,14 +60,19 @@ Health::checks([
 ]);
 ```
 
-When no cache is provided, the package will use Laravel's default cache driver.
+### Cache Behavior
+
+- **Cache Duration**: Configurable via `cacheResultsForMinutes()` (default: 0, no caching)
+- **Cache Key**: Automatically generated based on your installed packages and their versions
+- **Cache Store**: Uses Laravel's default cache driver (or custom PSR-16 cache if provided)
+- **Package Changes**: Different package versions generate different cache keys, ensuring fresh checks
 
 ### Configuration Options
 
 ```php
 SecurityAdvisoriesCheck::new()
-    ->retryTimes(3)                     // Number of retry attempts on failure
-    ->cacheResultsForMinutes(120)       // Cache duration in minutes
+    ->retryTimes(3)                     // Number of retry attempts on failure (default: 5)
+    ->cacheResultsForMinutes(120)       // Cache duration in minutes (default: 0, disabled)
     ->ignorePackage('vendor/package')   // Ignore specific packages
     ->ignoredPackages([                 // Ignore multiple packages
         'vendor/package1',

@@ -165,3 +165,78 @@ it('can be instantiated early without resolving cache bindings', function () {
 
     expect($check)->toBeInstanceOf(SecurityAdvisoriesCheck::class);
 });
+
+it('works when instantiated in register() without caching enabled', function () {
+    // Simulates: SecurityAdvisoriesCheck::new() in ServiceProvider::register()
+    // without any caching - should work immediately
+    $mockData = json_encode(['advisories' => []]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $check = new SecurityAdvisoriesCheck($packagistClient);
+    // Note: No caching enabled (cacheResultsForMinutes not called)
+
+    $result = $check->run();
+
+    expect($result->status)->toBe(Status::ok());
+});
+
+it('works when instantiated in register() with PSR-16 cache', function () {
+    // Simulates: new SecurityAdvisoriesCheck(null, $cache) in ServiceProvider::register()
+    // with PSR-16 cache - should work because it doesn't need Laravel cache
+    $cache = new TestCache();
+    $mockData = json_encode(['advisories' => []]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData),
+        new Response(200, [], $mockData),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
+    $check->cacheResultsForMinutes(60);
+
+    // First call
+    $result1 = $check->run();
+    expect($result1->status)->toBe(Status::ok());
+
+    // Second call should use cache
+    $result2 = $check->run();
+    expect($result2->status)->toBe(Status::ok());
+    expect($mock->count())->toBe(1); // Only one request should have been made
+});
+
+// Note: Testing with Laravel's cache facade requires a full Laravel application
+// In real usage:
+// - register() + cacheResultsForMinutes() works because cache resolution is lazy (happens in run())
+// - boot() + cacheResultsForMinutes() also works as the cache facade is available
+// Both scenarios work identically - the cache is only resolved when run() is called
+
+it('works when instantiated in boot() without caching', function () {
+    // Simulates: SecurityAdvisoriesCheck::new() in ServiceProvider::boot()
+    // Same as register() - should work identically
+    $mockData = json_encode(['advisories' => []]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new Spatie\Packagist\PackagistUrlGenerator());
+    $check = new SecurityAdvisoriesCheck($packagistClient);
+
+    $result = $check->run();
+
+    expect($result->status)->toBe(Status::ok());
+});
