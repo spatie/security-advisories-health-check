@@ -38,17 +38,20 @@ Health::checks([
 You can also provide your own PSR-16 compatible cache instance:
 
 ```php
-use Illuminate\Support\Facades\Cache;
 use Spatie\Health\Facades\Health;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 
+$cache = new YourPsr16CacheImplementation();
+
 Health::checks([
-    SecurityAdvisoriesCheck::new(
+    new SecurityAdvisoriesCheck(
         packagistClient: null,
-        cache: Cache::store('redis')    // Use Redis cache store
+        cache: $cache
     )->cacheResultsForMinutes(120),     // Cache for 2 hours
 ]);
 ```
+
+When no cache is provided, the package will use Laravel's default cache driver.
 
 ### Configuration Options
 

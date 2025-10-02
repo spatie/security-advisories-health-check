@@ -5,8 +5,8 @@ namespace Spatie\SecurityAdvisoriesHealthCheck;
 use Composer\InstalledVersions;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ServerException;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Collection;
+use Psr\SimpleCache\CacheInterface;
 use Spatie\Health\Checks\Check;
 use Spatie\Health\Checks\Result;
 use Spatie\Packagist\PackagistClient;
@@ -28,12 +28,16 @@ class SecurityAdvisoriesCheck extends Check
 
     protected int $cacheResultsForMinutes = 0;
 
-    public function __construct(?PackagistClient $packagistClient = null)
+    protected ?CacheInterface $cache = null;
+
+    public function __construct(?PackagistClient $packagistClient = null, ?CacheInterface $cache = null)
     {
         parent::__construct();
 
         $this->packagistClient = $packagistClient
             ?? new PackagistClient(new Client(), new PackagistUrlGenerator());
+
+        $this->cache = $cache;
     }
 
 
@@ -115,20 +119,33 @@ class SecurityAdvisoriesCheck extends Check
      */
     protected function getAdvisories(Collection $packages): Collection
     {
-        if ($this->cacheExpiryInMinutes === 0) {
+        if ($this->cacheResultsForMinutes === 0) {
             return $this->fetchAdvisoriesFromApi($packages);
         }
 
-        return $this->getCacheRepository()->remember(
-            $this->getCacheKey($packages),
-            $this->cacheExpiryInMinutes * 60,
+        $cacheKey = $this->getCacheKey($packages);
+
+        // Use PSR-16 cache if provided
+        if ($this->cache !== null) {
+            $cached = $this->cache->get($cacheKey);
+            if ($cached !== null) {
+                return collect($cached);
+            }
+
+            $advisories = $this->fetchAdvisoriesFromApi($packages);
+            $this->cache->set($cacheKey, $advisories->toArray(), $this->cacheResultsForMinutes * 60);
+
+            return $advisories;
+        }
+
+        // Fall back to Laravel's cache (resolved at runtime to avoid issues during register())
+        $cache = \Illuminate\Support\Facades\App::make('cache.store');
+
+        return $cache->remember(
+            $cacheKey,
+            $this->cacheResultsForMinutes * 60,
             fn() => $this->fetchAdvisoriesFromApi($packages)
         );
-    }
-
-    protected function getCacheRepository(): CacheRepository
-    {
-        return \Illuminate\Support\Facades\App::make(CacheRepository::class);
     }
 
     protected function fetchAdvisoriesFromApi(Collection $packages): Collection
