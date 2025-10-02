@@ -152,9 +152,16 @@ it('uses cache when enabled', function () {
     $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
     $check->cacheResultsForMinutes(60);
 
-    $result = $check->run();
+    // First call should hit the API
+    $result1 = $check->run();
+    expect($mock->count())->toBe(0); // Mock should be consumed
 
-    expect($result)->toBeInstanceOf(\Spatie\Health\Checks\Result::class);
+    // Second call should use cache and not hit API
+    $result2 = $check->run();
+
+    expect($result1)->toBeInstanceOf(\Spatie\Health\Checks\Result::class);
+    expect($result2)->toBeInstanceOf(\Spatie\Health\Checks\Result::class);
+    expect($result1->status)->toBe($result2->status);
 });
 
 it('can be instantiated early without resolving cache bindings', function () {
