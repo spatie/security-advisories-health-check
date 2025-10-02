@@ -37,33 +37,15 @@ Health::checks([
 ]);
 ```
 
-When no custom cache is provided, the package will use Laravel's default cache driver.
-
-### Using Custom Cache (PSR-16)
-
-For more control, you can provide your own PSR-16 compatible cache instance. This is recommended if you want to use a specific cache store or need to instantiate the check in `register()` with full control over caching:
-
-```php
-use Spatie\Health\Facades\Health;
-use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
-
-$cache = new YourPsr16CacheImplementation();
-
-// Recommended for register() usage with custom cache
-Health::checks([
-    new SecurityAdvisoriesCheck(
-        packagistClient: null,
-        cache: $cache
-    )->cacheResultsForMinutes(120),     // Cache for 2 hours
-]);
-```
+The package uses Laravel's default cache driver. Cache resolution happens lazily when the health check runs, ensuring compatibility with both `register()` and `boot()` methods.
 
 ### Cache Behavior
 
 - **Cache Duration**: Configurable via `cacheResultsForMinutes()` (default: 0, no caching)
 - **Cache Key**: Automatically generated based on your installed packages and their versions
-- **Cache Store**: Uses Laravel's default cache driver (or custom PSR-16 cache if provided)
+- **Cache Store**: Uses Laravel's default cache driver
 - **Package Changes**: Different package versions generate different cache keys, ensuring fresh checks
+- **Lazy Resolution**: Cache is only resolved when the health check runs, not during instantiation
 
 ### Configuration Options
 

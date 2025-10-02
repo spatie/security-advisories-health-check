@@ -5,12 +5,13 @@ use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Mockery;
 use Spatie\Health\Checks\Result;
 use Spatie\Health\Enums\Status;
 use Spatie\Packagist\PackagistClient;
 use Spatie\Packagist\PackagistUrlGenerator;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
-use Spatie\SecurityAdvisoriesHealthCheck\Tests\TestCache;
 
 it('can get security advisories', function () {
     $check = new SecurityAdvisoriesCheck();
@@ -63,45 +64,7 @@ it('should throw the last encountered non-gateway exception after retrying gatew
     $check->run();
 })->throws(ClientException::class, null, 403);
 
-it('caches security advisories results', function () {
-    $cache = new TestCache();
-
-    $mockData = json_encode([
-        'advisories' => [
-            'vendor/package' => [
-                [
-                    'advisoryId' => 'ADVISORY-123',
-                    'affectedVersions' => '>=1.0,<1.1',
-                    'title' => 'Test Security Issue',
-                ],
-            ],
-        ],
-    ]);
-
-    $mock = new MockHandler([
-        new Response(200, [], $mockData),
-    ]);
-
-    $handlerStack = HandlerStack::create($mock);
-    $client = new Client(['handler' => $handlerStack]);
-
-    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
-    $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
-    $check->cacheResultsForMinutes(60); // Enable caching
-
-    // First call should hit the API
-    $result1 = $check->run();
-    expect($mock->count())->toBe(0); // Mock should be consumed
-
-    // Second call should use cache and not hit API
-    $result2 = $check->run();
-
-    expect($result1->status)->toBe($result2->status);
-    expect($result1->notificationMessage)->toBe($result2->notificationMessage);
-});
-
-it('respects custom cache expiry time', function () {
-    $cache = new TestCache();
+it('uses Laravel cache when caching is enabled', function () {
     $mockData = json_encode(['advisories' => []]);
 
     $mock = new MockHandler([
@@ -112,12 +75,82 @@ it('respects custom cache expiry time', function () {
     $client = new Client(['handler' => $handlerStack]);
 
     $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
-    $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
-    $check->cacheResultsForMinutes(120); // 2 hours
+
+    // Mock the cache repository
+    $cacheRepository = Mockery::mock(CacheRepository::class);
+    $cacheRepository->shouldReceive('remember')
+        ->once()
+        ->with(
+            Mockery::pattern('/^security-advisories:[a-f0-9]{32}$/'),
+            3600, // 60 minutes * 60 seconds
+            Mockery::type('callable')
+        )
+        ->andReturnUsing(function ($key, $ttl, $callback) {
+            return $callback();
+        });
+
+    // Mock App::make to return our mock cache
+    $app = Mockery::mock('alias:Illuminate\Support\Facades\App');
+    $app->shouldReceive('make')
+        ->with('cache.store')
+        ->andReturn($cacheRepository);
+
+    $check = new SecurityAdvisoriesCheck($packagistClient);
+    $check->cacheResultsForMinutes(60);
 
     $result = $check->run();
 
     expect($result)->toBeInstanceOf(Result::class);
+    expect($result->status)->toBe(Status::ok());
+});
+
+it('cache is called multiple times when cache stores result', function () {
+    $mockData = json_encode(['advisories' => []]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
+
+    // Mock cache that stores and returns values
+    $cachedValue = null;
+    $cacheRepository = Mockery::mock(CacheRepository::class);
+    $cacheRepository->shouldReceive('remember')
+        ->twice() // Should be called twice
+        ->with(
+            Mockery::pattern('/^security-advisories:[a-f0-9]{32}$/'),
+            3600,
+            Mockery::type('callable')
+        )
+        ->andReturnUsing(function ($key, $ttl, $callback) use (&$cachedValue) {
+            if ($cachedValue === null) {
+                $cachedValue = $callback(); // First call: execute callback
+            }
+            return $cachedValue; // Return cached value
+        });
+
+    // Mock App::make to return our mock cache
+    $app = Mockery::mock('alias:Illuminate\Support\Facades\App');
+    $app->shouldReceive('make')
+        ->with('cache.store')
+        ->andReturn($cacheRepository);
+
+    $check = new SecurityAdvisoriesCheck($packagistClient);
+    $check->cacheResultsForMinutes(60);
+
+    // First call
+    $result1 = $check->run();
+    expect($mock->count())->toBe(0); // API called once
+
+    // Second call - should use cached value
+    $result2 = $check->run();
+    expect($mock->count())->toBe(0); // API NOT called again (still 0 remaining)
+
+    expect($result1->status)->toBe($result2->status);
 });
 
 it('does not use cache when caching is disabled', function () {
@@ -147,32 +180,6 @@ it('does not use cache when caching is disabled', function () {
     expect($mock->count())->toBe(0); // All mocks consumed = 2 API calls made
 });
 
-it('uses cache when enabled', function () {
-    $cache = new TestCache();
-    $mockData = json_encode(['advisories' => []]);
-
-    $mock = new MockHandler([
-        new Response(200, [], $mockData),
-    ]);
-
-    $handlerStack = HandlerStack::create($mock);
-    $client = new Client(['handler' => $handlerStack]);
-
-    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
-    $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
-    $check->cacheResultsForMinutes(60);
-
-    // First call should hit the API
-    $result1 = $check->run();
-    expect($mock->count())->toBe(0); // Mock should be consumed
-
-    // Second call should use cache and not hit API
-    $result2 = $check->run();
-
-    expect($result1)->toBeInstanceOf(Result::class);
-    expect($result2)->toBeInstanceOf(Result::class);
-    expect($result1->status)->toBe($result2->status);
-});
 
 it('can be instantiated early without resolving cache bindings', function () {
     // This simulates instantiation during ServiceProvider::register()
@@ -204,39 +211,6 @@ it('works when instantiated in register() without caching enabled', function () 
     expect($result->status)->toBe(Status::ok());
 });
 
-it('works when instantiated in register() with PSR-16 cache', function () {
-    // Simulates: new SecurityAdvisoriesCheck(null, $cache) in ServiceProvider::register()
-    // with PSR-16 cache - should work because it doesn't need Laravel cache
-    $cache = new TestCache();
-    $mockData = json_encode(['advisories' => []]);
-
-    $mock = new MockHandler([
-        new Response(200, [], $mockData),
-        new Response(200, [], $mockData),
-    ]);
-
-    $handlerStack = HandlerStack::create($mock);
-    $client = new Client(['handler' => $handlerStack]);
-
-    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
-    $check = new SecurityAdvisoriesCheck($packagistClient, $cache);
-    $check->cacheResultsForMinutes(60);
-
-    // First call
-    $result1 = $check->run();
-    expect($result1->status)->toBe(Status::ok());
-
-    // Second call should use cache
-    $result2 = $check->run();
-    expect($result2->status)->toBe(Status::ok());
-    expect($mock->count())->toBe(1); // Only one request should have been made
-});
-
-// Note: Testing with Laravel's cache facade requires a full Laravel application
-// In real usage:
-// - register() + cacheResultsForMinutes() works because cache resolution is lazy (happens in run())
-// - boot() + cacheResultsForMinutes() also works as the cache facade is available
-// Both scenarios work identically - the cache is only resolved when run() is called
 
 it('works when instantiated in boot() without caching', function () {
     // Simulates: SecurityAdvisoriesCheck::new() in ServiceProvider::boot()

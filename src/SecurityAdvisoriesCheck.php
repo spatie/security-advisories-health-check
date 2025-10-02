@@ -7,7 +7,6 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ServerException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
-use Psr\SimpleCache\CacheInterface;
 use Spatie\Health\Checks\Check;
 use Spatie\Health\Checks\Result;
 use Spatie\Packagist\PackagistClient;
@@ -29,16 +28,12 @@ class SecurityAdvisoriesCheck extends Check
 
     protected int $cacheResultsForMinutes = 0;
 
-    protected ?CacheInterface $cache = null;
-
-    public function __construct(?PackagistClient $packagistClient = null, ?CacheInterface $cache = null)
+    public function __construct(?PackagistClient $packagistClient = null)
     {
         parent::__construct();
 
         $this->packagistClient = $packagistClient
             ?? new PackagistClient(new Client(), new PackagistUrlGenerator());
-
-        $this->cache = $cache;
     }
 
 
@@ -126,20 +121,7 @@ class SecurityAdvisoriesCheck extends Check
 
         $cacheKey = $this->getCacheKey($packages);
 
-        // Use PSR-16 cache if provided
-        if ($this->cache !== null) {
-            $cached = $this->cache->get($cacheKey);
-            if ($cached !== null) {
-                return collect($cached);
-            }
-
-            $advisories = $this->fetchAdvisoriesFromApi($packages);
-            $this->cache->set($cacheKey, $advisories->toArray(), $this->cacheResultsForMinutes * 60);
-
-            return $advisories;
-        }
-
-        // Fall back to Laravel's cache (resolved at runtime to avoid issues during register())
+        // Use Laravel's cache (resolved at runtime to avoid issues during register())
         $cache = App::make('cache.store');
 
         return $cache->remember(
