@@ -6,8 +6,7 @@ use Composer\InstalledVersions;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ServerException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
-use Psr\SimpleCache\CacheInterface;
+use Illuminate\Support\Facades\App;
 use Spatie\Health\Checks\Check;
 use Spatie\Health\Checks\Result;
 use Spatie\Packagist\PackagistClient;
@@ -29,26 +28,14 @@ class SecurityAdvisoriesCheck extends Check
 
     protected int $cacheResultsForMinutes = 0;
 
-    protected ?CacheInterface $cache = null;
-
-    public function __construct(?PackagistClient $packagistClient = null, ?CacheInterface $cache = null)
+    public function __construct(?PackagistClient $packagistClient = null)
     {
         parent::__construct();
 
         $this->packagistClient = $packagistClient
             ?? new PackagistClient(new Client(), new PackagistUrlGenerator());
-
-        $this->cache = $cache;
     }
 
-    protected function getDefaultCache(): ?CacheInterface
-    {
-        if (function_exists('app') && app()->bound('cache')) {
-            return Cache::store();
-        }
-
-        return null;
-    }
 
     public function retryTimes(int $times): self
     {
@@ -60,10 +47,6 @@ class SecurityAdvisoriesCheck extends Check
     public function cacheResultsForMinutes(int $minutes): self
     {
         $this->cacheResultsForMinutes = $minutes;
-
-        if ($this->cache === null && $minutes > 0) {
-            $this->cache = $this->getDefaultCache();
-        }
 
         return $this;
     }
@@ -132,20 +115,20 @@ class SecurityAdvisoriesCheck extends Check
      */
     protected function getAdvisories(Collection $packages): Collection
     {
-        if ($this->cache === null || $this->cacheResultsForMinutes === 0) {
+        if ($this->cacheResultsForMinutes === 0) {
             return $this->fetchAdvisoriesFromApi($packages);
         }
 
         $cacheKey = $this->getCacheKey($packages);
 
-        if ($cached = $this->cache->get($cacheKey)) {
-            return $cached;
-        }
+        // Use Laravel's cache (resolved at runtime to avoid issues during register())
+        $cache = App::make('cache.store');
 
-        $result = $this->fetchAdvisoriesFromApi($packages);
-        $this->cache->set($cacheKey, $result, $this->cacheResultsForMinutes * 60);
-
-        return $result;
+        return $cache->remember(
+            $cacheKey,
+            $this->cacheResultsForMinutes * 60,
+            fn() => $this->fetchAdvisoriesFromApi($packages)
+        );
     }
 
     protected function fetchAdvisoriesFromApi(Collection $packages): Collection

@@ -5,11 +5,13 @@
 
 This package contains a [Laravel Health](https://spatie.be/docs/laravel-health) check that can report any known security issues with the installed PHP packages in your application.
 
-The security advisories are fetched from Packages and are sources from GitHub, and other sources.
+The security advisories are fetched from Packagist and are sourced from GitHub and other sources.
+
+## Usage
+
+You can register this check, typically this happens in a service provider:
 
 ```php
-// typically, in a service provider
-
 use Spatie\Health\Facades\Health;
 use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
 
@@ -33,22 +35,7 @@ Health::checks([
 ]);
 ```
 
-### Using Custom Cache
-
-You can also provide your own PSR-16 compatible cache instance:
-
-```php
-use Illuminate\Support\Facades\Cache;
-use Spatie\Health\Facades\Health;
-use Spatie\SecurityAdvisoriesHealthCheck\SecurityAdvisoriesCheck;
-
-Health::checks([
-    SecurityAdvisoriesCheck::new(
-        packagistClient: null,
-        cache: Cache::store('redis')    // Use Redis cache store
-    )->cacheResultsForMinutes(120),     // Cache for 2 hours
-]);
-```
+The package uses Laravel's default cache driver.
 
 ### Configuration Options
 
