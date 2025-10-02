@@ -125,6 +125,7 @@ it('does not use cache when caching is disabled', function () {
 
     $mock = new MockHandler([
         new Response(200, [], $mockData),
+        new Response(200, [], $mockData),
     ]);
 
     $handlerStack = HandlerStack::create($mock);
@@ -134,9 +135,16 @@ it('does not use cache when caching is disabled', function () {
     $check = new SecurityAdvisoriesCheck($packagistClient);
     $check->cacheResultsForMinutes(0); // No caching
 
-    $result = $check->run();
+    // First call
+    $result1 = $check->run();
+    expect($result1->status)->toBe(Status::ok());
 
-    expect($result->status)->toBe(Status::ok());
+    // Second call should hit API again (not use cache)
+    $result2 = $check->run();
+    expect($result2->status)->toBe(Status::ok());
+
+    // Both requests should have been made
+    expect($mock->count())->toBe(0); // All mocks consumed = 2 API calls made
 });
 
 it('uses cache when enabled', function () {
