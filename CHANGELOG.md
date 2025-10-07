@@ -2,6 +2,14 @@
 
 All notable changes to `security-advisories-health-check` will be documented in this file.
 
+## 1.3.1 - 2025-10-07
+
+### What's Changed
+
+* Bugfix for registering checks in register() with support for registering in boot() by @mattiasgeniar in https://github.com/spatie/security-advisories-health-check/pull/31
+
+**Full Changelog**: https://github.com/spatie/security-advisories-health-check/compare/1.3.0...1.3.1
+
 ## 1.3.0 - 2025-09-28
 
 ### What's Changed
