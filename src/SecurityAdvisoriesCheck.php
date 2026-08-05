@@ -123,11 +123,22 @@ class SecurityAdvisoriesCheck extends Check
         // Use Laravel's cache (resolved at runtime to avoid issues during register())
         $cache = App::make('cache.store');
 
-        return $cache->remember(
-            $cacheKey,
-            $this->cacheResultsForMinutes * 60,
-            fn () => $this->fetchAdvisoriesFromApi($packages)
-        );
+        // Cache a plain array rather than a Collection object. Persistent cache
+        // stores serialize objects, and apps with `cache.serializable_classes`
+        // set to `false` (the default in new Laravel skeletons) refuse to
+        // unserialize any object, turning a cached Collection into a
+        // __PHP_Incomplete_Class stub. A plain array is unaffected, and any
+        // non-array cache value (e.g. a stub or legacy entry) is treated as a
+        // cache miss and overwritten.
+        $advisories = $cache->get($cacheKey);
+
+        if (! is_array($advisories)) {
+            $advisories = $this->fetchAdvisoriesFromApi($packages)->toArray();
+
+            $cache->put($cacheKey, $advisories, $this->cacheResultsForMinutes * 60);
+        }
+
+        return collect($advisories);
     }
 
     protected function fetchAdvisoriesFromApi(Collection $packages): Collection

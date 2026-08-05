@@ -78,16 +78,17 @@ it('uses Laravel cache when caching is enabled', function () {
 
     // Mock the cache repository
     $cacheRepository = Mockery::mock(CacheRepository::class);
-    $cacheRepository->shouldReceive('remember')
+    $cacheRepository->shouldReceive('get')
+        ->once()
+        ->with(Mockery::pattern('/^security-advisories:[a-f0-9]{32}$/'))
+        ->andReturnNull();
+    $cacheRepository->shouldReceive('put')
         ->once()
         ->with(
             Mockery::pattern('/^security-advisories:[a-f0-9]{32}$/'),
-            3600, // 60 minutes * 60 seconds
-            Mockery::type('callable')
-        )
-        ->andReturnUsing(function ($key, $ttl, $callback) {
-            return $callback();
-        });
+            Mockery::type('array'),
+            3600 // 60 minutes * 60 seconds
+        );
 
     // Mock App::make to return our mock cache
     $app = Mockery::mock('alias:Illuminate\Support\Facades\App');
@@ -119,19 +120,23 @@ it('cache is called multiple times when cache stores result', function () {
     // Mock cache that stores and returns values
     $cachedValue = null;
     $cacheRepository = Mockery::mock(CacheRepository::class);
-    $cacheRepository->shouldReceive('remember')
+    $cacheRepository->shouldReceive('get')
         ->twice() // Should be called twice
+        ->with(Mockery::pattern('/^security-advisories:[a-f0-9]{32}$/'))
+        ->andReturnUsing(function () use (&$cachedValue) {
+            return $cachedValue;
+        });
+    $cacheRepository->shouldReceive('put')
+        ->once() // Only the first run stores
         ->with(
             Mockery::pattern('/^security-advisories:[a-f0-9]{32}$/'),
-            3600,
-            Mockery::type('callable')
+            Mockery::type('array'),
+            3600
         )
-        ->andReturnUsing(function ($key, $ttl, $callback) use (&$cachedValue) {
-            if ($cachedValue === null) {
-                $cachedValue = $callback(); // First call: execute callback
-            }
+        ->andReturnUsing(function ($key, $value) use (&$cachedValue) {
+            $cachedValue = $value;
 
-            return $cachedValue; // Return cached value
+            return true;
         });
 
     // Mock App::make to return our mock cache
@@ -152,6 +157,53 @@ it('cache is called multiple times when cache stores result', function () {
     expect($mock->count())->toBe(0);
 
     expect($result1->status)->toBe($result2->status);
+});
+
+it('refetches when the cached value is not an array', function () {
+    $mockData = json_encode(['advisories' => []]);
+
+    $mock = new MockHandler([
+        new Response(200, [], $mockData),
+    ]);
+
+    $handlerStack = HandlerStack::create($mock);
+    $client = new Client(['handler' => $handlerStack]);
+
+    $packagistClient = new PackagistClient($client, new PackagistUrlGenerator());
+
+    // Simulate an app with `cache.serializable_classes => false`, where a
+    // previously cached Collection object unserializes to a
+    // __PHP_Incomplete_Class stub instead of an array.
+    $incompleteClassStub = unserialize(
+        serialize(collect(['acme/package' => 'advisory'])),
+        ['allowed_classes' => false],
+    );
+
+    $cacheRepository = Mockery::mock(CacheRepository::class);
+    $cacheRepository->shouldReceive('get')
+        ->once()
+        ->with(Mockery::pattern('/^security-advisories:[a-f0-9]{32}$/'))
+        ->andReturn($incompleteClassStub);
+    $cacheRepository->shouldReceive('put')
+        ->once()
+        ->with(
+            Mockery::pattern('/^security-advisories:[a-f0-9]{32}$/'),
+            Mockery::type('array'),
+            3600
+        );
+
+    $app = Mockery::mock('alias:Illuminate\Support\Facades\App');
+    $app->shouldReceive('make')
+        ->with('cache.store')
+        ->andReturn($cacheRepository);
+
+    $check = new SecurityAdvisoriesCheck($packagistClient);
+    $check->cacheResultsForMinutes(60);
+
+    $result = $check->run();
+
+    expect($result->status)->toBe(Status::ok());
+    expect($mock->count())->toBe(0); // API was called despite the cache entry
 });
 
 it('does not use cache when caching is disabled', function () {
