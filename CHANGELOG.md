@@ -2,6 +2,24 @@
 
 All notable changes to `security-advisories-health-check` will be documented in this file.
 
+## 1.3.2 - 2026-08-07
+
+### What's Changed
+
+* Bump dependabot/fetch-metadata from 2.4.0 to 2.5.0 by @dependabot[bot] in https://github.com/spatie/security-advisories-health-check/pull/34
+* Bump actions/checkout from 2 to 6 by @dependabot[bot] in https://github.com/spatie/security-advisories-health-check/pull/33
+* Bump stefanzweifel/git-auto-commit-action from 6 to 7 by @dependabot[bot] in https://github.com/spatie/security-advisories-health-check/pull/32
+* Bump dependabot/fetch-metadata from 2.5.0 to 3.0.0 by @dependabot[bot] in https://github.com/spatie/security-advisories-health-check/pull/35
+* Bump dependabot/fetch-metadata from 3.0.0 to 3.1.0 by @dependabot[bot] in https://github.com/spatie/security-advisories-health-check/pull/36
+* Bump actions/checkout from 6 to 7 by @dependabot[bot] in https://github.com/spatie/security-advisories-health-check/pull/37
+* Cache advisories as a plain array to support serializable_classes=false by @arnevanhoorn in https://github.com/spatie/security-advisories-health-check/pull/38
+
+### New Contributors
+
+* @arnevanhoorn made their first contribution in https://github.com/spatie/security-advisories-health-check/pull/38
+
+**Full Changelog**: https://github.com/spatie/security-advisories-health-check/compare/1.3.1...1.3.2
+
 ## 1.3.1 - 2025-10-07
 
 ### What's Changed
