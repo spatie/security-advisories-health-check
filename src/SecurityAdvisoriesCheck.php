@@ -5,6 +5,7 @@ namespace Spatie\SecurityAdvisoriesHealthCheck;
 use Composer\InstalledVersions;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ServerException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Spatie\Health\Checks\Check;
@@ -27,6 +28,16 @@ class SecurityAdvisoriesCheck extends Check
     public PackagistClient $packagistClient;
 
     protected int $cacheResultsForMinutes = 0;
+
+    /** @var array<string> */
+    protected array $advisoryFieldsInMeta = [
+        'title',
+        'link',
+        'cve',
+        'severity',
+        'affectedVersions',
+        'reportedAt',
+    ];
 
     public function __construct(?PackagistClient $packagistClient = null)
     {
@@ -76,8 +87,23 @@ class SecurityAdvisoriesCheck extends Check
             ->join(', ', ' and ');
 
         return Result::make()
-            ->meta($advisories->toArray())
+            ->meta($this->advisoriesForMeta($advisories))
             ->failed("Security advisories found for {$packageNames}");
+    }
+
+    /**
+     * Packagist repeats the package name, the repository URL and the source ids
+     * on every advisory. Health results are sent and stored on every run, so
+     * only the fields a reader needs to act on the advisory are kept.
+     */
+    protected function advisoriesForMeta(Collection $advisories): array
+    {
+        return $advisories
+            ->map(fn (array $packageAdvisories) => collect($packageAdvisories)
+                ->map(fn (array $advisory) => Arr::only($advisory, $this->advisoryFieldsInMeta))
+                ->values()
+                ->all())
+            ->all();
     }
 
     public function ignorePackage(string $packageName): self

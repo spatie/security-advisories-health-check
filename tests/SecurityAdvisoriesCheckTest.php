@@ -284,3 +284,38 @@ it('works when instantiated in boot() without caching', function () {
 
     expect($result->status)->toBe(Status::ok());
 });
+
+it('keeps only the fields a reader needs from each advisory in the meta', function () {
+    $mockData = json_encode(['advisories' => [
+        'guzzlehttp/guzzle' => [[
+            'advisoryId' => 'PKSA-yfw5-9gnj-n2c7',
+            'packageName' => 'guzzlehttp/guzzle',
+            'remoteId' => 'GHSA-w248-ffj2-4v5q',
+            'title' => 'Cross-domain cookie leakage',
+            'link' => 'https://github.com/advisories/GHSA-w248-ffj2-4v5q',
+            'cve' => 'CVE-2022-29248',
+            'affectedVersions' => '>=0.0.1',
+            'source' => 'GitHub',
+            'reportedAt' => '2022-05-25 19:21:00',
+            'composerRepository' => 'https://packagist.org',
+            'severity' => 'high',
+            'sources' => [['name' => 'GitHub', 'remoteId' => 'GHSA-w248-ffj2-4v5q']],
+        ]],
+    ]]);
+
+    $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
+
+    $result = (new SecurityAdvisoriesCheck(new PackagistClient($client, new PackagistUrlGenerator())))->run();
+
+    expect($result->status)->toBe(Status::failed());
+    expect($result->meta)->toBe([
+        'guzzlehttp/guzzle' => [[
+            'title' => 'Cross-domain cookie leakage',
+            'link' => 'https://github.com/advisories/GHSA-w248-ffj2-4v5q',
+            'cve' => 'CVE-2022-29248',
+            'affectedVersions' => '>=0.0.1',
+            'reportedAt' => '2022-05-25 19:21:00',
+            'severity' => 'high',
+        ]],
+    ]);
+});
