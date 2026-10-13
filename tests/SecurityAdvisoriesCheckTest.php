@@ -285,7 +285,7 @@ it('works when instantiated in boot() without caching', function () {
     expect($result->status)->toBe(Status::ok());
 });
 
-it('keeps only the fields a reader needs from each advisory in the meta', function () {
+it('keeps only the fields a reader needs and the affected range of the installed version in the meta', function () {
     $mockData = json_encode(['advisories' => [
         'guzzlehttp/guzzle' => [[
             'advisoryId' => 'PKSA-yfw5-9gnj-n2c7',
@@ -293,8 +293,8 @@ it('keeps only the fields a reader needs from each advisory in the meta', functi
             'remoteId' => 'GHSA-w248-ffj2-4v5q',
             'title' => 'Cross-domain cookie leakage',
             'link' => 'https://github.com/advisories/GHSA-w248-ffj2-4v5q',
-            'cve' => 'CVE-2022-29248',
-            'affectedVersions' => '>=0.0.1',
+            'cve' => null,
+            'affectedVersions' => '>=99.0.0,<99.1.0|>=0.0.1,<99.0.0',
             'source' => 'GitHub',
             'reportedAt' => '2022-05-25 19:21:00',
             'composerRepository' => 'https://packagist.org',
@@ -312,8 +312,7 @@ it('keeps only the fields a reader needs from each advisory in the meta', functi
         'guzzlehttp/guzzle' => [[
             'title' => 'Cross-domain cookie leakage',
             'link' => 'https://github.com/advisories/GHSA-w248-ffj2-4v5q',
-            'cve' => 'CVE-2022-29248',
-            'affectedVersions' => '>=0.0.1',
+            'affectedVersions' => '>=0.0.1,<99.0.0',
             'reportedAt' => '2022-05-25 19:21:00',
             'severity' => 'high',
         ]],

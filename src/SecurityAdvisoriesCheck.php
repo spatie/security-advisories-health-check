@@ -3,9 +3,9 @@
 namespace Spatie\SecurityAdvisoriesHealthCheck;
 
 use Composer\InstalledVersions;
+use Composer\Semver\Semver;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ServerException;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Spatie\Health\Checks\Check;
@@ -87,23 +87,45 @@ class SecurityAdvisoriesCheck extends Check
             ->join(', ', ' and ');
 
         return Result::make()
-            ->meta($this->advisoriesForMeta($advisories))
+            ->meta($this->advisoriesForMeta($advisories, $packages))
             ->failed("Security advisories found for {$packageNames}");
     }
 
     /**
      * Packagist repeats the package name, the repository URL and the source ids
-     * on every advisory. Health results are sent and stored on every run, so
-     * only the fields a reader needs to act on the advisory are kept.
+     * on every advisory, and lists the affected ranges of every release branch.
+     * Health results are sent and stored on every run, so only the fields a
+     * reader needs to act on the advisory are kept, with the one affected range
+     * that matches the installed version.
+     *
+     * @param  Collection<string, string>  $installedPackages
      */
-    protected function advisoriesForMeta(Collection $advisories): array
+    protected function advisoriesForMeta(Collection $advisories, Collection $installedPackages): array
     {
         return $advisories
-            ->map(fn (array $packageAdvisories) => collect($packageAdvisories)
-                ->map(fn (array $advisory) => Arr::only($advisory, $this->advisoryFieldsInMeta))
+            ->map(fn (array $packageAdvisories, string $packageName) => collect($packageAdvisories)
+                ->map(fn (array $advisory) => collect($advisory)
+                    ->only($this->advisoryFieldsInMeta)
+                    ->put('affectedVersions', $this->affectedRangeOfInstalledVersion(
+                        $advisory['affectedVersions'],
+                        $installedPackages->get($packageName),
+                    ))
+                    ->reject(fn (mixed $value) => $value === null)
+                    ->all())
                 ->values()
                 ->all())
             ->all();
+    }
+
+    protected function affectedRangeOfInstalledVersion(string $affectedVersions, ?string $installedVersion): string
+    {
+        if ($installedVersion === null) {
+            return $affectedVersions;
+        }
+
+        return collect(explode('|', $affectedVersions))
+            ->first(fn (string $range) => Semver::satisfies($installedVersion, $range))
+            ?? $affectedVersions;
     }
 
     public function ignorePackage(string $packageName): self
