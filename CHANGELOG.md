@@ -2,6 +2,20 @@
 
 All notable changes to `security-advisories-health-check` will be documented in this file.
 
+## 1.3.3 - 2026-10-17
+
+Reduce the size of stored security-advisory results by retaining actionable fields and the affected version range matching the installed package.
+
+Includes correct handling of Composer `|` and `||` constraints and customizable metadata field selection.
+
+Compatibility note: result metadata no longer contains the full Packagist advisory record. Subclasses can add omitted fields back through the protected `$advisoryFieldsInMeta` property.
+
+### What's Changed
+
+* Store a slimmer advisory record in the result meta by @mattiasgeniar in https://github.com/spatie/security-advisories-health-check/pull/39
+
+**Full Changelog**: https://github.com/spatie/security-advisories-health-check/compare/1.3.2...1.3.3
+
 ## 1.3.2 - 2026-08-07
 
 ### What's Changed
