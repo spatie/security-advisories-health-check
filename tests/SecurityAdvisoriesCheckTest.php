@@ -285,7 +285,7 @@ it('works when instantiated in boot() without caching', function () {
     expect($result->status)->toBe(Status::ok());
 });
 
-it('keeps only the fields a reader needs and the affected range of the installed version in the meta', function () {
+it('keeps only the fields a reader needs and the affected range of the installed version in the meta', function (string $affectedVersions, string $expectedRange) {
     $mockData = json_encode(['advisories' => [
         'guzzlehttp/guzzle' => [[
             'advisoryId' => 'PKSA-yfw5-9gnj-n2c7',
@@ -294,7 +294,7 @@ it('keeps only the fields a reader needs and the affected range of the installed
             'title' => 'Cross-domain cookie leakage',
             'link' => 'https://github.com/advisories/GHSA-w248-ffj2-4v5q',
             'cve' => null,
-            'affectedVersions' => '>=99.0.0,<99.1.0|>=0.0.1,<99.0.0',
+            'affectedVersions' => $affectedVersions,
             'source' => 'GitHub',
             'reportedAt' => '2022-05-25 19:21:00',
             'composerRepository' => 'https://packagist.org',
@@ -305,16 +305,59 @@ it('keeps only the fields a reader needs and the affected range of the installed
 
     $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
 
-    $result = (new SecurityAdvisoriesCheck(new PackagistClient($client, new PackagistUrlGenerator())))->run();
+    $check = new class (new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+        protected function getInstalledPackages(): \Illuminate\Support\Collection
+        {
+            return collect(['guzzlehttp/guzzle' => '7.4.0.0']);
+        }
+    };
+
+    $result = $check->run();
 
     expect($result->status)->toBe(Status::failed());
     expect($result->meta)->toBe([
         'guzzlehttp/guzzle' => [[
             'title' => 'Cross-domain cookie leakage',
             'link' => 'https://github.com/advisories/GHSA-w248-ffj2-4v5q',
-            'affectedVersions' => '>=0.0.1,<99.0.0',
+            'affectedVersions' => $expectedRange,
             'reportedAt' => '2022-05-25 19:21:00',
             'severity' => 'high',
+        ]],
+    ]);
+})->with([
+    'single pipe' => ['>=8.0,<8.1|>=7.0,<7.5', '>=7.0,<7.5'],
+    'double pipe' => ['>=8.0,<8.1||>=7.0,<7.5', '>=7.0,<7.5'],
+    'spaced double pipe' => ['>=8.0,<8.1 || >=7.0,<7.5', ' >=7.0,<7.5'],
+    'first range' => ['>=7.0,<7.5|>=8.0,<8.1', '>=7.0,<7.5'],
+    'upper bound excluded' => ['>=7.0,<7.4|>=7.4,<7.5', '>=7.4,<7.5'],
+]);
+
+it('respects the advisory fields selected by a subclass', function () {
+    $mockData = json_encode(['advisories' => [
+        'guzzlehttp/guzzle' => [[
+            'advisoryId' => 'PKSA-yfw5-9gnj-n2c7',
+            'title' => 'Cross-domain cookie leakage',
+            'affectedVersions' => '<99.0.0',
+        ]],
+    ]]);
+
+    $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
+    $check = new class (new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+        protected array $advisoryFieldsInMeta = ['advisoryId', 'title'];
+
+        protected function getInstalledPackages(): \Illuminate\Support\Collection
+        {
+            return collect(['guzzlehttp/guzzle' => '7.4.0.0']);
+        }
+    };
+
+    $result = $check->run();
+
+    expect($result->status)->toBe(Status::failed());
+    expect($result->meta)->toBe([
+        'guzzlehttp/guzzle' => [[
+            'advisoryId' => 'PKSA-yfw5-9gnj-n2c7',
+            'title' => 'Cross-domain cookie leakage',
         ]],
     ]);
 });

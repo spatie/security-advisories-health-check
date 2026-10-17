@@ -92,29 +92,31 @@ class SecurityAdvisoriesCheck extends Check
     }
 
     /**
-     * Packagist repeats the package name, the repository URL and the source ids
-     * on every advisory, and lists the affected ranges of every release branch.
-     * Health results are sent and stored on every run, so only the fields a
-     * reader needs to act on the advisory are kept, with the one affected range
-     * that matches the installed version.
+     * Keep actionable fields and the matching version range to reduce stored metadata.
      *
      * @param  Collection<string, string>  $installedPackages
      */
     protected function advisoriesForMeta(Collection $advisories, Collection $installedPackages): array
     {
-        return $advisories
-            ->map(fn (array $packageAdvisories, string $packageName) => collect($packageAdvisories)
-                ->map(fn (array $advisory) => collect($advisory)
+        $meta = [];
+
+        foreach ($advisories as $packageName => $packageAdvisories) {
+            $meta[$packageName] = [];
+
+            foreach ($packageAdvisories as $advisory) {
+                $advisory['affectedVersions'] = $this->affectedRangeOfInstalledVersion(
+                    $advisory['affectedVersions'],
+                    $installedPackages->get($packageName),
+                );
+
+                $meta[$packageName][] = collect($advisory)
                     ->only($this->advisoryFieldsInMeta)
-                    ->put('affectedVersions', $this->affectedRangeOfInstalledVersion(
-                        $advisory['affectedVersions'],
-                        $installedPackages->get($packageName),
-                    ))
                     ->reject(fn (mixed $value) => $value === null)
-                    ->all())
-                ->values()
-                ->all())
-            ->all();
+                    ->all();
+            }
+        }
+
+        return $meta;
     }
 
     protected function affectedRangeOfInstalledVersion(string $affectedVersions, ?string $installedVersion): string
@@ -123,7 +125,7 @@ class SecurityAdvisoriesCheck extends Check
             return $affectedVersions;
         }
 
-        return collect(explode('|', $affectedVersions))
+        return collect(preg_split('/\|\|?/', $affectedVersions))
             ->first(fn (string $range) => Semver::satisfies($installedVersion, $range))
             ?? $affectedVersions;
     }
