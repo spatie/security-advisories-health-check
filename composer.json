@@ -17,6 +17,7 @@
     ],
     "require": {
         "php": "^8.3",
+        "composer/semver": "^3.0",
         "spatie/packagist-api": "^2.1"
     },
     "require-dev": {

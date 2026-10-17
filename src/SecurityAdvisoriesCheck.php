@@ -3,6 +3,7 @@
 namespace Spatie\SecurityAdvisoriesHealthCheck;
 
 use Composer\InstalledVersions;
+use Composer\Semver\Semver;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ServerException;
 use Illuminate\Support\Collection;
@@ -27,6 +28,16 @@ class SecurityAdvisoriesCheck extends Check
     public PackagistClient $packagistClient;
 
     protected int $cacheResultsForMinutes = 0;
+
+    /** @var array<string> */
+    protected array $advisoryFieldsInMeta = [
+        'title',
+        'link',
+        'cve',
+        'severity',
+        'affectedVersions',
+        'reportedAt',
+    ];
 
     public function __construct(?PackagistClient $packagistClient = null)
     {
@@ -76,8 +87,47 @@ class SecurityAdvisoriesCheck extends Check
             ->join(', ', ' and ');
 
         return Result::make()
-            ->meta($advisories->toArray())
+            ->meta($this->advisoriesForMeta($advisories, $packages))
             ->failed("Security advisories found for {$packageNames}");
+    }
+
+    /**
+     * Keep actionable fields and the matching version range to reduce stored metadata.
+     *
+     * @param  Collection<string, string>  $installedPackages
+     */
+    protected function advisoriesForMeta(Collection $advisories, Collection $installedPackages): array
+    {
+        $meta = [];
+
+        foreach ($advisories as $packageName => $packageAdvisories) {
+            $meta[$packageName] = [];
+
+            foreach ($packageAdvisories as $advisory) {
+                $advisory['affectedVersions'] = $this->affectedRangeOfInstalledVersion(
+                    $advisory['affectedVersions'],
+                    $installedPackages->get($packageName),
+                );
+
+                $meta[$packageName][] = collect($advisory)
+                    ->only($this->advisoryFieldsInMeta)
+                    ->reject(fn (mixed $value) => $value === null)
+                    ->all();
+            }
+        }
+
+        return $meta;
+    }
+
+    protected function affectedRangeOfInstalledVersion(string $affectedVersions, ?string $installedVersion): string
+    {
+        if ($installedVersion === null) {
+            return $affectedVersions;
+        }
+
+        return collect(preg_split('/\|\|?/', $affectedVersions))
+            ->first(fn (string $range) => Semver::satisfies($installedVersion, $range))
+            ?? $affectedVersions;
     }
 
     public function ignorePackage(string $packageName): self
