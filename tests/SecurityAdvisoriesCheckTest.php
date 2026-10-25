@@ -6,7 +6,6 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
-use Mockery;
 use Spatie\Health\Checks\Result;
 use Spatie\Health\Enums\Status;
 use Spatie\Packagist\PackagistClient;
@@ -305,7 +304,7 @@ it('keeps only the fields a reader needs and the affected range of the installed
 
     $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
 
-    $check = new class (new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+    $check = new class(new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
         protected function getInstalledPackages(): \Illuminate\Support\Collection
         {
             return collect(['guzzlehttp/guzzle' => '7.4.0.0']);
@@ -332,6 +331,102 @@ it('keeps only the fields a reader needs and the affected range of the installed
     'upper bound excluded' => ['>=7.0,<7.4|>=7.4,<7.5', '>=7.4,<7.5'],
 ]);
 
+it('removes advisories matching an ignored advisory id, keeping others for the same package', function () {
+    $mockData = json_encode(['advisories' => [
+        'guzzlehttp/guzzle' => [
+            [
+                'advisoryId' => 'PKSA-ignored',
+                'title' => 'Ignored advisory',
+                'affectedVersions' => '<99.0.0',
+            ],
+            [
+                'advisoryId' => 'PKSA-kept',
+                'title' => 'Kept advisory',
+                'affectedVersions' => '<99.0.0',
+            ],
+        ],
+    ]]);
+
+    $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
+    $check = new class(new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+        protected array $advisoryFieldsInMeta = ['advisoryId', 'title'];
+
+        protected function getInstalledPackages(): \Illuminate\Support\Collection
+        {
+            return collect(['guzzlehttp/guzzle' => '7.4.0.0']);
+        }
+    };
+
+    $check->ignoreAdvisoryId('PKSA-ignored');
+
+    $result = $check->run();
+
+    expect($result->status)->toBe(Status::failed());
+    expect($result->meta)->toBe([
+        'guzzlehttp/guzzle' => [[
+            'advisoryId' => 'PKSA-kept',
+            'title' => 'Kept advisory',
+        ]],
+    ]);
+});
+
+it('removes an advisory matching an ignored advisory id', function () {
+    $mockData = json_encode(['advisories' => [
+        'livewire/livewire' => [[
+            'advisoryId' => 'PKSA-xhv3-nr94-h8db',
+            'title' => 'Authorization bypass in #[Authorize]',
+            'affectedVersions' => '>=4.3.0,<4.4.8',
+        ]],
+    ]]);
+
+    $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
+    $check = new class(new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+        protected function getInstalledPackages(): \Illuminate\Support\Collection
+        {
+            return collect(['livewire/livewire' => '4.4.0.0']);
+        }
+    };
+
+    $check->ignoreAdvisoryId('PKSA-xhv3-nr94-h8db');
+
+    $result = $check->run();
+
+    expect($result->status)->toBe(Status::ok());
+    expect($result->meta)->toBeEmpty();
+});
+
+it('accepts multiple ignored advisory ids at once via ignoredAdvisoryIds', function () {
+    $mockData = json_encode(['advisories' => [
+        'guzzlehttp/guzzle' => [
+            [
+                'advisoryId' => 'PKSA-one',
+                'title' => 'First advisory',
+                'affectedVersions' => '<99.0.0',
+            ],
+            [
+                'advisoryId' => 'PKSA-two',
+                'title' => 'Second advisory',
+                'affectedVersions' => '<99.0.0',
+            ],
+        ],
+    ]]);
+
+    $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
+    $check = new class(new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+        protected function getInstalledPackages(): \Illuminate\Support\Collection
+        {
+            return collect(['guzzlehttp/guzzle' => '7.4.0.0']);
+        }
+    };
+
+    $check->ignoredAdvisoryIds(['PKSA-one', 'PKSA-two']);
+
+    $result = $check->run();
+
+    expect($result->status)->toBe(Status::ok());
+    expect($result->meta)->toBeEmpty();
+});
+
 it('respects the advisory fields selected by a subclass', function () {
     $mockData = json_encode(['advisories' => [
         'guzzlehttp/guzzle' => [[
@@ -342,7 +437,7 @@ it('respects the advisory fields selected by a subclass', function () {
     ]]);
 
     $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
-    $check = new class (new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+    $check = new class(new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
         protected array $advisoryFieldsInMeta = ['advisoryId', 'title'];
 
         protected function getInstalledPackages(): \Illuminate\Support\Collection

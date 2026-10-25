@@ -19,6 +19,9 @@ class SecurityAdvisoriesCheck extends Check
     /** @var array<string> */
     protected array $ignoredPackages = [];
 
+    /** @var array<string> */
+    protected array $ignoredAdvisoryIds = [];
+
     protected int $retryTimes = 5;
 
     protected int $gatewayExceptionCount = 0;
@@ -69,7 +72,8 @@ class SecurityAdvisoriesCheck extends Check
         $packages = $this->getInstalledPackages();
 
         try {
-            $advisories = $this->retryGetAdvisories($packages);
+            $advisories = $this->retryGetAdvisories($packages)
+                ->pipe(fn (Collection $advisories) => $this->removeIgnoredAdvisoryIds($advisories));
         } catch (Throwable $exception) {
             if ($this->allRetriesAreGatewayErrors()) {
                 return Result::make('Packagist service could not be reached')->ok();
@@ -119,6 +123,20 @@ class SecurityAdvisoriesCheck extends Check
         return $meta;
     }
 
+    /**
+     * @param  Collection<string, array<int, array>>  $advisories
+     * @return Collection<string, array<int, array>>
+     */
+    protected function removeIgnoredAdvisoryIds(Collection $advisories): Collection
+    {
+        return $advisories
+            ->map(fn (array $packageAdvisories) => array_values(array_filter(
+                $packageAdvisories,
+                fn (array $advisory) => ! in_array($advisory['advisoryId'] ?? null, $this->ignoredAdvisoryIds),
+            )))
+            ->filter(fn (array $packageAdvisories) => $packageAdvisories !== []);
+    }
+
     protected function affectedRangeOfInstalledVersion(string $affectedVersions, ?string $installedVersion): string
     {
         if ($installedVersion === null) {
@@ -141,6 +159,22 @@ class SecurityAdvisoriesCheck extends Check
     {
         foreach ($packageNames as $packageName) {
             $this->ignorePackage($packageName);
+        }
+
+        return $this;
+    }
+
+    public function ignoreAdvisoryId(string $advisoryId): self
+    {
+        $this->ignoredAdvisoryIds[] = $advisoryId;
+
+        return $this;
+    }
+
+    public function ignoredAdvisoryIds(array $advisoryIds): self
+    {
+        foreach ($advisoryIds as $advisoryId) {
+            $this->ignoreAdvisoryId($advisoryId);
         }
 
         return $this;
