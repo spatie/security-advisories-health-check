@@ -304,7 +304,7 @@ it('keeps only the fields a reader needs and the affected range of the installed
 
     $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
 
-    $check = new class(new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+    $check = new class (new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
         protected function getInstalledPackages(): \Illuminate\Support\Collection
         {
             return collect(['guzzlehttp/guzzle' => '7.4.0.0']);
@@ -348,7 +348,7 @@ it('removes advisories matching an ignored advisory id, keeping others for the s
     ]]);
 
     $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
-    $check = new class(new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+    $check = new class (new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
         protected array $advisoryFieldsInMeta = ['advisoryId', 'title'];
 
         protected function getInstalledPackages(): \Illuminate\Support\Collection
@@ -380,7 +380,7 @@ it('removes an advisory matching an ignored advisory id', function () {
     ]]);
 
     $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
-    $check = new class(new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+    $check = new class (new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
         protected function getInstalledPackages(): \Illuminate\Support\Collection
         {
             return collect(['livewire/livewire' => '4.4.0.0']);
@@ -412,7 +412,7 @@ it('accepts multiple ignored advisory ids at once via ignoredAdvisoryIds', funct
     ]]);
 
     $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
-    $check = new class(new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+    $check = new class (new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
         protected function getInstalledPackages(): \Illuminate\Support\Collection
         {
             return collect(['guzzlehttp/guzzle' => '7.4.0.0']);
@@ -437,7 +437,7 @@ it('respects the advisory fields selected by a subclass', function () {
     ]]);
 
     $client = new Client(['handler' => HandlerStack::create(new MockHandler([new Response(200, [], $mockData)]))]);
-    $check = new class(new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
+    $check = new class (new PackagistClient($client, new PackagistUrlGenerator())) extends SecurityAdvisoriesCheck {
         protected array $advisoryFieldsInMeta = ['advisoryId', 'title'];
 
         protected function getInstalledPackages(): \Illuminate\Support\Collection
