@@ -2,6 +2,18 @@
 
 All notable changes to `security-advisories-health-check` will be documented in this file.
 
+## 1.4.0 - 2026-10-26
+
+### Added
+
+- Ignore individual Packagist security advisory IDs with ignoreAdvisoryId() or ignoredAdvisoryIds(), while continuing to report other advisories for the same package. Thanks to @frasermurraysco in https://github.com/spatie/security-advisories-health-check/pull/40.
+- Apply advisory exclusions after fetching or reading cached results; no cache key changes are required.
+- Add regression coverage for partial, complete, and multiple advisory exclusions.
+
+No breaking changes. Existing package-wide exclusions continue to work.
+
+**Full Changelog**: https://github.com/spatie/security-advisories-health-check/compare/1.3.3...1.4.0
+
 ## 1.3.3 - 2026-10-17
 
 Reduce the size of stored security-advisory results by retaining actionable fields and the affected version range matching the installed package.
