@@ -52,18 +52,20 @@ SecurityAdvisoriesCheck::new()
 
 ### Ignoring specific advisories
 
-Sometimes an advisory doesn't affect your application, but you still want to be warned about other advisories for the same package. Instead of ignoring the entire package, you can silence individual advisories by their Packagist advisory ID:
+After assessing that an advisory does not affect your application, you can ignore it by its Packagist advisory ID. Other advisories for the same package will still be reported:
 
 ```php
 SecurityAdvisoriesCheck::new()
     ->ignoreAdvisoryId('PKSA-xxxx-xxxx-xxxx')  // Ignore a single advisory
-    ->ignoredAdvisoryIds([                     // Ignore multiple advisories
-        'PKSA-xxxx-xxxx-xxxx',
-        'PKSA-yyyy-yyyy-yyyy'
+    ->ignoredAdvisoryIds([                  // Add more advisories to ignore
+        'PKSA-yyyy-yyyy-yyyy',
+        'PKSA-zzzz-zzzz-zzzz',
     ]);
 ```
 
-Advisory IDs use Packagist's `PKSA-xxxx-xxxx-xxxx` format.
+Both methods add to the same ignore list. Replace these placeholders with the `advisoryId` values from [Packagist's security advisories API](https://packagist.org/apidoc#list-security-advisories), which use the `PKSA-xxxx-xxxx-xxxx` format, not CVE or GHSA identifiers.
+
+Ignoring an advisory only excludes it from this health check; it does not fix the vulnerability. Prefer upgrading to a patched version when one is available.
 
 ## Documentation
 
