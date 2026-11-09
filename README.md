@@ -50,6 +50,23 @@ SecurityAdvisoriesCheck::new()
     ]);
 ```
 
+### Ignoring specific advisories
+
+After assessing that an advisory does not affect your application, you can ignore it by its Packagist advisory ID. Other advisories for the same package will still be reported:
+
+```php
+SecurityAdvisoriesCheck::new()
+    ->ignoreAdvisoryId('PKSA-xxxx-xxxx-xxxx')  // Ignore a single advisory
+    ->ignoredAdvisoryIds([                  // Add more advisories to ignore
+        'PKSA-yyyy-yyyy-yyyy',
+        'PKSA-zzzz-zzzz-zzzz',
+    ]);
+```
+
+Both methods add to the same ignore list. Replace these placeholders with the `advisoryId` values from [Packagist's security advisories API](https://packagist.org/apidoc#list-security-advisories), which use the `PKSA-xxxx-xxxx-xxxx` format, not CVE or GHSA identifiers.
+
+Ignoring an advisory only excludes it from this health check; it does not fix the vulnerability. Prefer upgrading to a patched version when one is available.
+
 ## Documentation
 
 The documentation of this package is available [inside the docs of Laravel Health](https://spatie.be/docs/laravel-health/v1/available-checks/security-advisories).
